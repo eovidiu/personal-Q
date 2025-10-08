@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AI Rule Frontmatter",
+  "type": "object",
+  "required": ["id", "version"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^rules\\.[a-z0-9_.-]+$"},
+    "version": {"type": "string"},
+    "description": {"type": "string"},
+    "globs": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "alwaysApply": {"type": "boolean"},
+    "appliesToTools": {
+      "type": "array",
+      "items": {"type": "string", "enum": ["codex", "claude", "cursor", "gemini", "other"]}
+    },
+    "order": {"type": "number"},
+    "tags": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": true
+}
+

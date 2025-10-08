@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Blocks commits that include likely secrets using gitleaks if present,
+# otherwise falls back to simple regex scans.
+
+set -euo pipefail
+
+if command -v gitleaks >/dev/null 2>&1; then
+  echo "[pre-commit] Running gitleaks protect on staged changes..."
+  gitleaks protect --staged --redact || {
+    echo "[pre-commit] gitleaks failed. Resolve findings or bypass with care.";
+    exit 1;
+  }
+  exit 0
+fi
+
+echo "[pre-commit] gitleaks not found. Running fallback regex scan..."
+PATTERNS='(AKIA[0-9A-Z]{16}|ghp_[0-9A-Za-z]{36,}|xox[baprs]-[0-9A-Za-z-]{20,}|sk_live_[0-9A-Za-z]{24,}|-----BEGIN (RSA|DSA|EC) PRIVATE KEY-----)'
+
+# Get staged files
+files=$(git diff --cached --name-only --diff-filter=ACMRT | tr '\n' ' ')
+[ -z "$files" ] && exit 0
+
+if rg -nE "$PATTERNS" $files; then
+  echo "[pre-commit] Potential secrets detected. Remove or mask before committing."
+  exit 1
+fi
+
+exit 0
+

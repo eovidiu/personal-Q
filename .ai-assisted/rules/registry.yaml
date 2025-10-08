@@ -1,0 +1,37 @@
+rules:
+  - path: rules/core/assistant-rules.md
+    id: rules.core.assistant
+    version: 1.0.0
+    alwaysApply: true
+    tags: ["core"]
+
+  - path: rules/profiles/python.md
+    id: rules.lang.python
+    version: 1.0.0
+    globs: ["**/*.py", "**/pyproject.toml", "**/requirements.txt", "**/Pipfile", "**/setup.py"]
+    tags: ["language", "python"]
+
+  - path: rules/profiles/javascript.md
+    id: rules.lang.javascript
+    version: 1.0.0
+    globs: ["**/*.{js,jsx,mjs}", "**/package.json", "**/*.json"]
+    tags: ["language", "javascript"]
+
+  - path: rules/profiles/ios.md
+    id: rules.lang.ios
+    version: 1.0.0
+    globs: ["**/*.{swift,m,h}", "**/Podfile", "**/*.xcodeproj", "**/*.xcworkspace", "**/Package.swift"]
+    tags: ["language", "ios"]
+
+  - path: rules/tools/codex-cli.md
+    id: rules.tool.codex
+    version: 1.0.0
+    appliesToTools: ["codex"]
+    tags: ["tooling"]
+
+  - path: rules/tools/claude-code.md
+    id: rules.tool.claude
+    version: 1.0.0
+    appliesToTools: ["claude"]
+    tags: ["tooling"]
+
