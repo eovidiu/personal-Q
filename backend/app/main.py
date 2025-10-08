@@ -78,12 +78,15 @@ async def health_check():
     }
 
 
-# Import and include routers (will add as we build)
-# from app.routers import agents, tasks, settings as settings_router, websocket
-# app.include_router(agents.router, prefix=f"{settings.api_prefix}/agents", tags=["agents"])
-# app.include_router(tasks.router, prefix=f"{settings.api_prefix}/tasks", tags=["tasks"])
-# app.include_router(settings_router.router, prefix=f"{settings.api_prefix}/settings", tags=["settings"])
-# app.include_router(websocket.router, prefix="/ws", tags=["websocket"])
+# Import and include routers
+from app.routers import agents, tasks, settings, websocket, activities, metrics
+
+app.include_router(agents.router, prefix=f"{settings.api_prefix}/agents", tags=["agents"])
+app.include_router(tasks.router, prefix=f"{settings.api_prefix}/tasks", tags=["tasks"])
+app.include_router(activities.router, prefix=f"{settings.api_prefix}/activities", tags=["activities"])
+app.include_router(metrics.router, prefix=f"{settings.api_prefix}/metrics", tags=["metrics"])
+app.include_router(settings.router, prefix=f"{settings.api_prefix}/settings", tags=["settings"])
+app.include_router(websocket.router, prefix="/ws", tags=["websocket"])
 
 
 if __name__ == "__main__":
