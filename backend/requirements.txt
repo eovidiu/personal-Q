@@ -1,0 +1,47 @@
+# FastAPI and dependencies
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+pydantic==2.9.2
+pydantic-settings==2.6.0
+
+# Database
+sqlalchemy==2.0.36
+alembic==1.13.3
+aiosqlite==0.20.0
+
+# ChromaDB for vector storage
+chromadb==0.5.18
+
+# LLM Integration
+anthropic==0.39.0
+
+# CrewAI
+crewai==0.86.0
+crewai-tools==0.14.0
+
+# Task Queue
+celery==5.4.0
+redis==5.2.0
+
+# External Integrations
+slack-sdk==3.33.4
+msgraph-sdk==1.12.0
+azure-identity==1.19.0
+
+# Utilities
+python-dotenv==1.0.1
+python-multipart==0.0.19
+httpx==0.27.2
+websockets==14.1
+
+# Testing
+pytest==8.3.4
+pytest-asyncio==0.24.0
+pytest-cov==6.0.0
+pytest-mock==3.14.0
+httpx-test==0.1.0
+
+# Code quality
+black==24.10.0
+flake8==7.1.1
+mypy==1.13.0

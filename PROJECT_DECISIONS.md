@@ -33,3 +33,64 @@ Choice
 
 Rationale
 - Removes submodule complexity while still allowing periodic updates.
+
+## 2025-10-08 Decision: Use SQLite for all structured data storage
+
+Context
+- Need embedded database for agent config, tasks, and activity logs
+- Initially considered both SQLite and ChromaDB for different purposes
+
+Options Considered
+- Use both SQLite (structured data) and ChromaDB (vector storage)
+- Use only ChromaDB for everything
+- Use only SQLite for everything
+
+Choice
+- Use SQLite for structured data (agents, tasks, activities, API keys, schedules)
+- Use ChromaDB exclusively for vector embeddings and semantic search
+
+Rationale
+- SQLite excels at relational data with ACID compliance
+- ChromaDB optimized for vector similarity search
+- Each database serves its specific strength
+- Both are embedded and require no external services
+- No internet connection required for either
+
+## 2025-10-08 Decision: Async SQLAlchemy with aiosqlite
+
+Context
+- FastAPI is async-first framework
+- Need database operations that don't block event loop
+
+Options Considered
+- Synchronous SQLAlchemy with thread pool
+- Async SQLAlchemy with aiosqlite
+
+Choice
+- Async SQLAlchemy 2.0 with aiosqlite driver
+
+Rationale
+- Better performance with async/await patterns
+- Non-blocking database operations
+- Consistent with FastAPI async architecture
+- Modern SQLAlchemy 2.0 patterns
+
+## 2025-10-08 Decision: Alembic for database migrations
+
+Context
+- Need version-controlled database schema changes
+- Want to track database evolution over time
+
+Options Considered
+- Manual SQL migrations
+- Alembic with autogenerate
+- SQLAlchemy create_all() only
+
+Choice
+- Alembic with manual migrations (autogenerate as helper)
+
+Rationale
+- Professional database version control
+- Rollback capability
+- Team collaboration support
+- Industry standard for SQLAlchemy projects
