@@ -6,18 +6,25 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import uuid
+import logging
+from typing import Dict
 
 from app.db.database import get_db
 from app.schemas.settings import APIKeyCreate, APIKeyUpdate, APIKeyMasked, ConnectionTestRequest, ConnectionTestResponse
 from app.models.api_key import APIKey
 from app.services.llm_service import get_llm_service
+from app.dependencies.auth import get_current_user
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
 @router.get("/api-keys", response_model=list[APIKeyMasked])
-async def list_api_keys(db: AsyncSession = Depends(get_db)):
-    """List all API keys (masked)."""
+async def list_api_keys(
+    db: AsyncSession = Depends(get_db),
+    current_user: Dict = Depends(get_current_user)
+):
+    """List all API keys (masked, requires authentication)."""
     result = await db.execute(select(APIKey))
     api_keys = result.scalars().all()
 
@@ -27,9 +34,10 @@ async def list_api_keys(db: AsyncSession = Depends(get_db)):
 @router.post("/api-keys", response_model=APIKeyMasked, status_code=201)
 async def create_or_update_api_key(
     key_data: APIKeyCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Dict = Depends(get_current_user)
 ):
-    """Create or update an API key."""
+    """Create or update an API key (requires authentication)."""
     # Check if key exists
     result = await db.execute(
         select(APIKey).where(APIKey.service_name == key_data.service_name)
@@ -59,9 +67,10 @@ async def create_or_update_api_key(
 @router.post("/test-connection", response_model=ConnectionTestResponse)
 async def test_connection(
     test_data: ConnectionTestRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Dict = Depends(get_current_user)
 ):
-    """Test API connection for a service."""
+    """Test API connection for a service (requires authentication)."""
     # Get API key
     result = await db.execute(
         select(APIKey).where(APIKey.service_name == test_data.service_name)
@@ -105,9 +114,10 @@ async def test_connection(
 @router.delete("/api-keys/{service_name}", status_code=204)
 async def delete_api_key(
     service_name: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Dict = Depends(get_current_user)
 ):
-    """Delete an API key."""
+    """Delete an API key (requires authentication)."""
     result = await db.execute(
         select(APIKey).where(APIKey.service_name == service_name)
     )

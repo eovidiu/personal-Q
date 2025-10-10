@@ -6,19 +6,24 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from datetime import datetime, timedelta
+from typing import Dict
 
 from app.db.database import get_db
 from app.models.agent import Agent, AgentStatus
 from app.models.task import Task, TaskStatus
 from app.services.memory_service import get_memory_service
 from app.utils.datetime_utils import utcnow
+from app.dependencies.auth import get_current_user
 
 router = APIRouter()
 
 
 @router.get("/dashboard")
-async def get_dashboard_metrics(db: AsyncSession = Depends(get_db)):
-    """Get dashboard statistics."""
+async def get_dashboard_metrics(
+    db: AsyncSession = Depends(get_db),
+    current_user: Dict = Depends(get_current_user)
+):
+    """Get dashboard statistics (requires authentication)."""
     # Total agents
     total_agents_result = await db.execute(select(func.count(Agent.id)))
     total_agents = total_agents_result.scalar()
@@ -71,9 +76,10 @@ async def get_dashboard_metrics(db: AsyncSession = Depends(get_db)):
 @router.get("/agent/{agent_id}")
 async def get_agent_metrics(
     agent_id: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Dict = Depends(get_current_user)
 ):
-    """Get metrics for specific agent."""
+    """Get metrics for specific agent (requires authentication)."""
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent = result.scalar_one_or_none()
 
@@ -112,8 +118,8 @@ async def get_agent_metrics(
 
 
 @router.get("/memory")
-async def get_memory_statistics():
-    """Get memory/storage statistics."""
+async def get_memory_statistics(current_user: Dict = Depends(get_current_user)):
+    """Get memory/storage statistics (requires authentication)."""
     memory_service = get_memory_service()
     stats = await memory_service.get_statistics()
 

@@ -1,7 +1,15 @@
 """
-API routers.
+API routers for all endpoints.
 """
 
-from app.routers import agents
+__all__ = [
+    "agents",
+    "tasks",
+    "activities",
+    "metrics",
+    "settings",
+    "websocket",
+    "auth",
+]
 
-__all__ = ["agents"]
+from app.routers import agents, tasks, activities, metrics, settings, websocket, auth

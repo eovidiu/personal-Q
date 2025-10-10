@@ -196,6 +196,17 @@ class ObsidianClient:
                     "error": f"Note not found: {note_path}"
                 }
 
+            # Check file size before reading (max 10MB)
+            MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+            file_size = full_path.stat().st_size
+            
+            if file_size > MAX_FILE_SIZE:
+                logger.warning(f"File too large to read: {file_size} bytes (max {MAX_FILE_SIZE})")
+                return {
+                    "success": False,
+                    "error": f"File too large: {file_size / 1024 / 1024:.2f}MB (max 10MB)"
+                }
+
             # Use aiofiles for async file reading
             async with aiofiles.open(full_path, mode='r', encoding='utf-8') as f:
                 content = await f.read()
@@ -247,6 +258,17 @@ class ObsidianClient:
             Write status
         """
         try:
+            # Validate content size (max 10MB for a single note)
+            MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+            content_bytes = len(content.encode('utf-8'))
+            
+            if content_bytes > MAX_FILE_SIZE:
+                logger.warning(f"File size limit exceeded: {content_bytes} bytes (max {MAX_FILE_SIZE})")
+                return {
+                    "success": False,
+                    "error": f"Content too large: {content_bytes / 1024 / 1024:.2f}MB (max 10MB)"
+                }
+            
             # Validate path to prevent traversal attacks
             full_path = self._validate_note_path(note_path)
 

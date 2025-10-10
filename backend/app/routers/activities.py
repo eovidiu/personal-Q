@@ -5,11 +5,12 @@ Activity log API endpoints.
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from typing import Optional
+from typing import Optional, Dict
 
 from app.db.database import get_db
 from app.schemas.activity import Activity, ActivityList
 from app.models.activity import Activity as ActivityModel, ActivityType, ActivityStatus
+from app.dependencies.auth import get_current_user
 
 router = APIRouter()
 
@@ -21,9 +22,10 @@ async def list_activities(
     agent_id: Optional[str] = Query(None),
     activity_type: Optional[ActivityType] = Query(None),
     status: Optional[ActivityStatus] = Query(None),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Dict = Depends(get_current_user)
 ):
-    """List activities with filtering and pagination."""
+    """List activities with filtering and pagination (requires authentication)."""
     query = select(ActivityModel)
 
     if agent_id:

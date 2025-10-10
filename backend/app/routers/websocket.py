@@ -1,13 +1,15 @@
 """
-WebSocket endpoints for real-time updates.
+WebSocket endpoints for real-time updates with JWT authentication.
 """
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from typing import Dict, Set
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
+from typing import Dict, Set, Optional
 import json
 import logging
+import jwt
 
 from app.utils.datetime_utils import utcnow
+from config.settings import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -64,9 +66,60 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
+async def verify_websocket_token(token: Optional[str]) -> Optional[dict]:
+    """
+    Verify JWT token for WebSocket connection.
+    
+    Args:
+        token: JWT token from query parameter
+        
+    Returns:
+        Decoded payload if valid, None otherwise
+    """
+    if not token:
+        return None
+    
+    try:
+        payload = jwt.decode(
+            token,
+            settings.jwt_secret_key,
+            algorithms=["HS256"]
+        )
+        
+        # Verify email matches allowed user
+        if payload.get("email") != settings.allowed_email:
+            logger.warning(f"WebSocket: Unauthorized email in token: {payload.get('email')}")
+            return None
+        
+        return payload
+        
+    except jwt.ExpiredSignatureError:
+        logger.warning("WebSocket: Expired token")
+        return None
+    except jwt.InvalidTokenError as e:
+        logger.warning(f"WebSocket: Invalid token - {e}")
+        return None
+    except Exception as e:
+        logger.error(f"WebSocket: Token verification error - {e}")
+        return None
+
+
 @router.websocket("/")
-async def websocket_endpoint(websocket: WebSocket):
-    """WebSocket connection endpoint."""
+async def websocket_endpoint(websocket: WebSocket, token: Optional[str] = None):
+    """
+    WebSocket connection endpoint with authentication.
+    
+    Connection requires a valid JWT token passed as a query parameter:
+    ws://localhost:8000/ws/?token=<your_jwt_token>
+    """
+    # Verify authentication before accepting connection
+    user = await verify_websocket_token(token)
+    if not user:
+        logger.warning("WebSocket connection rejected: Invalid or missing token")
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication required")
+        return
+    
+    logger.info(f"WebSocket connection authenticated for user: {user.get('email')}")
     await manager.connect(websocket)
 
     try:

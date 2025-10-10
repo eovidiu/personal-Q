@@ -246,9 +246,13 @@ async def health_check():
 
 
 # Import and include routers
-from app.routers import agents, tasks, websocket, activities, metrics
+from app.routers import agents, tasks, websocket, activities, metrics, auth
 from app.routers import settings as settings_router
 
+# Authentication endpoints (public)
+app.include_router(auth.router, prefix=f"{settings.api_prefix}/auth", tags=["auth"])
+
+# Protected endpoints
 app.include_router(agents.router, prefix=f"{settings.api_prefix}/agents", tags=["agents"])
 app.include_router(tasks.router, prefix=f"{settings.api_prefix}/tasks", tags=["tasks"])
 app.include_router(activities.router, prefix=f"{settings.api_prefix}/activities", tags=["activities"])

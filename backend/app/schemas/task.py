@@ -1,20 +1,45 @@
 """
-Pydantic schemas for Task model.
+Pydantic schemas for Task model with input validation and sanitization.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Dict, Any, List
 from datetime import datetime
+import json
+import html
+import logging
 
 from app.models.task import TaskStatus, TaskPriority
 
+logger = logging.getLogger(__name__)
+
 
 class TaskBase(BaseModel):
-    """Base schema for Task."""
-    title: str = Field(..., min_length=1, max_length=255)
-    description: Optional[str] = None
+    """Base schema for Task with validation."""
+    title: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=5000)
     priority: TaskPriority = TaskPriority.MEDIUM
     input_data: Dict[str, Any] = Field(default_factory=dict)
+    
+    @field_validator('title', 'description')
+    @classmethod
+    def sanitize_html(cls, v):
+        """Escape HTML in text fields to prevent XSS."""
+        if v:
+            return html.escape(v.strip())
+        return v
+    
+    @field_validator('input_data')
+    @classmethod
+    def validate_input_data(cls, v):
+        """Validate size of input_data to prevent abuse."""
+        if v is None:
+            return v
+        # Limit size of input_data to 10KB
+        json_str = json.dumps(v)
+        if len(json_str) > 10000:
+            raise ValueError('input_data too large (max 10KB)')
+        return v
 
 
 class TaskCreate(TaskBase):

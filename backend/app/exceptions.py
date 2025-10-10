@@ -3,6 +3,28 @@ ABOUTME: Custom exception classes for Personal-Q application.
 ABOUTME: Provides specific exception types for better error handling and debugging.
 """
 
+__all__ = [
+    "PersonalQException",
+    "AgentNotFoundException",
+    "TaskNotFoundException",
+    "TaskExecutionError",
+    "LLMServiceError",
+    "LLMRateLimitError",
+    "LLMTimeoutError",
+    "IntegrationError",
+    "SlackIntegrationError",
+    "MicrosoftGraphError",
+    "ObsidianIntegrationError",
+    "ChromaDBError",
+    "CacheError",
+    "ConfigurationError",
+    "ValidationError",
+    "DuplicateResourceError",
+    "AuthenticationError",
+    "AuthorizationError",
+    "DatabaseError",
+]
+
 
 class PersonalQException(Exception):
     """Base exception for all Personal-Q errors."""

@@ -6,7 +6,7 @@ ABOUTME: Task creation and execution are heavily rate limited.
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from typing import Optional
+from typing import Optional, Dict
 import uuid
 
 from app.db.database import get_db
@@ -15,6 +15,7 @@ from app.models.task import Task as TaskModel, TaskStatus, TaskPriority
 from app.models.agent import Agent
 from app.workers.tasks import execute_agent_task
 from app.middleware.rate_limit import limiter, get_rate_limit
+from app.dependencies.auth import get_current_user
 
 router = APIRouter()
 
@@ -24,9 +25,10 @@ router = APIRouter()
 async def create_task(
     request: Request,
     task_data: TaskCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Dict = Depends(get_current_user)
 ):
-    """Create a new task and trigger execution (rate limited)."""
+    """Create a new task and trigger execution (rate limited, requires authentication)."""
     # Verify agent exists
     result = await db.execute(select(Agent).where(Agent.id == task_data.agent_id))
     agent = result.scalar_one_or_none()
@@ -57,7 +59,8 @@ async def list_tasks(
     page_size: int = Query(20, ge=1, le=100),
     agent_id: Optional[str] = Query(None),
     status: Optional[TaskStatus] = Query(None),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Dict = Depends(get_current_user)
 ):
     """List tasks with filtering and pagination."""
     query = select(TaskModel)
@@ -94,9 +97,10 @@ async def list_tasks(
 @router.get("/{task_id}", response_model=Task)
 async def get_task(
     task_id: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Dict = Depends(get_current_user)
 ):
-    """Get task details."""
+    """Get task details (requires authentication)."""
     result = await db.execute(select(TaskModel).where(TaskModel.id == task_id))
     task = result.scalar_one_or_none()
 
@@ -110,9 +114,10 @@ async def get_task(
 async def update_task(
     task_id: str,
     task_data: TaskUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Dict = Depends(get_current_user)
 ):
-    """Update task (limited fields)."""
+    """Update task (requires authentication)."""
     result = await db.execute(select(TaskModel).where(TaskModel.id == task_id))
     task = result.scalar_one_or_none()
 
