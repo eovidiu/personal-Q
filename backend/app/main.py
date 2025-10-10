@@ -3,8 +3,10 @@ ABOUTME: Main FastAPI application entry point with rate limiting and CORS.
 ABOUTME: Configures all routers, middleware, and lifecycle events.
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from contextlib import asynccontextmanager
 import logging
 from slowapi import _rate_limit_exceeded_handler
@@ -14,8 +16,9 @@ from config.settings import settings
 from app.db.database import init_db, close_db
 from app.middleware.rate_limit import limiter
 from app.middleware.security_headers import SecurityHeadersMiddleware
-from app.middleware.logging_middleware import RequestLoggingMiddleware
+from app.middleware.logging_middleware import RequestLoggingMiddleware, request_id_var
 from app.services.cache_service import cache_service
+from app.utils.datetime_utils import utcnow
 
 
 # Configure logging
@@ -57,6 +60,62 @@ app = FastAPI(
     redoc_url=f"{settings.api_prefix}/redoc",
     openapi_url=f"{settings.api_prefix}/openapi.json"
 )
+
+# Global exception handlers for consistent error responses
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle validation errors with standard format."""
+    errors = []
+    for error in exc.errors():
+        errors.append({
+            "code": error["type"].upper(),
+            "message": error["msg"],
+            "field": ".".join(str(loc) for loc in error["loc"][1:]) if len(error["loc"]) > 1 else None
+        })
+
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "error": "Validation Error",
+            "detail": "Invalid input data",
+            "code": "VALIDATION_ERROR",
+            "errors": errors,
+            "timestamp": utcnow().isoformat(),
+            "request_id": request.state.request_id if hasattr(request.state, "request_id") else None
+        }
+    )
+
+
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError):
+    """Handle ValueError with standard format."""
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "error": "Bad Request",
+            "detail": str(exc),
+            "code": "BAD_REQUEST",
+            "timestamp": utcnow().isoformat(),
+            "request_id": request.state.request_id if hasattr(request.state, "request_id") else None
+        }
+    )
+
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    """Handle unexpected errors with standard format."""
+    logger.exception(f"Unhandled exception: {exc}")
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "error": "Internal Server Error",
+            "detail": "An unexpected error occurred" if not settings.debug else str(exc),
+            "code": "INTERNAL_SERVER_ERROR",
+            "timestamp": utcnow().isoformat(),
+            "request_id": request.state.request_id if hasattr(request.state, "request_id") else None
+        }
+    )
+
 
 # Add rate limiter to app state
 app.state.limiter = limiter
