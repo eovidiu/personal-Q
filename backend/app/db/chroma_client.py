@@ -72,8 +72,9 @@ class ChromaDBClient:
         """
         try:
             self._client.delete_collection(name)
-        except Exception:
-            pass  # Collection doesn't exist
+        except Exception as e:
+            # Collection might not exist or deletion failed
+            logger.debug(f"Collection deletion skipped: {e}")
 
     def list_collections(self):
         """List all collections."""

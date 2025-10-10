@@ -86,10 +86,12 @@ async def test_connection(
                 message="Connection successful" if is_valid else "Invalid API key"
             )
         except Exception as e:
+            # Log full error but don't expose to user
+            logger.error(f"Connection test failed for {test_data.service_name}: {e}", exc_info=True)
             return ConnectionTestResponse(
                 service_name=test_data.service_name,
                 success=False,
-                message=f"Connection failed: {str(e)}"
+                message="Connection failed. Please check your API key and try again."
             )
 
     # For other services, return placeholder

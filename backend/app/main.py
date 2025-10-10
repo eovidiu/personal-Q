@@ -19,6 +19,14 @@ from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.middleware.logging_middleware import RequestLoggingMiddleware, request_id_var
 from app.services.cache_service import cache_service
 from app.utils.datetime_utils import utcnow
+from app.exceptions import (
+    PersonalQException,
+    AgentNotFoundException,
+    TaskNotFoundException,
+    LLMServiceError,
+    IntegrationError,
+    ConfigurationError
+)
 
 
 # Configure logging
@@ -62,6 +70,87 @@ app = FastAPI(
 )
 
 # Global exception handlers for consistent error responses
+
+# Custom application exceptions
+@app.exception_handler(AgentNotFoundException)
+async def agent_not_found_handler(request: Request, exc: AgentNotFoundException):
+    """Handle agent not found errors."""
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={
+            "error": "Not Found",
+            "detail": str(exc) or "Agent not found",
+            "code": "AGENT_NOT_FOUND",
+            "timestamp": utcnow().isoformat(),
+            "request_id": request.state.request_id if hasattr(request.state, "request_id") else None
+        }
+    )
+
+
+@app.exception_handler(TaskNotFoundException)
+async def task_not_found_handler(request: Request, exc: TaskNotFoundException):
+    """Handle task not found errors."""
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={
+            "error": "Not Found",
+            "detail": str(exc) or "Task not found",
+            "code": "TASK_NOT_FOUND",
+            "timestamp": utcnow().isoformat(),
+            "request_id": request.state.request_id if hasattr(request.state, "request_id") else None
+        }
+    )
+
+
+@app.exception_handler(LLMServiceError)
+async def llm_service_error_handler(request: Request, exc: LLMServiceError):
+    """Handle LLM service errors."""
+    logger.error(f"LLM service error: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={
+            "error": "Service Unavailable",
+            "detail": "LLM service is temporarily unavailable",
+            "code": "LLM_SERVICE_ERROR",
+            "timestamp": utcnow().isoformat(),
+            "request_id": request.state.request_id if hasattr(request.state, "request_id") else None
+        }
+    )
+
+
+@app.exception_handler(IntegrationError)
+async def integration_error_handler(request: Request, exc: IntegrationError):
+    """Handle external integration errors."""
+    logger.error(f"Integration error: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={
+            "error": "Integration Error",
+            "detail": "External service integration failed",
+            "code": "INTEGRATION_ERROR",
+            "timestamp": utcnow().isoformat(),
+            "request_id": request.state.request_id if hasattr(request.state, "request_id") else None
+        }
+    )
+
+
+@app.exception_handler(ConfigurationError)
+async def configuration_error_handler(request: Request, exc: ConfigurationError):
+    """Handle configuration errors."""
+    logger.error(f"Configuration error: {exc}")
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "error": "Configuration Error",
+            "detail": "System configuration is invalid" if not settings.debug else str(exc),
+            "code": "CONFIGURATION_ERROR",
+            "timestamp": utcnow().isoformat(),
+            "request_id": request.state.request_id if hasattr(request.state, "request_id") else None
+        }
+    )
+
+
+# Standard exceptions
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Handle validation errors with standard format."""

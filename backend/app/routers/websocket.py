@@ -5,9 +5,11 @@ WebSocket endpoints for real-time updates.
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import Dict, Set
 import json
+import logging
 
 from app.utils.datetime_utils import utcnow
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -49,7 +51,9 @@ class ConnectionManager:
                     "data": message,
                     "timestamp": utcnow().isoformat()
                 })
-            except Exception:
+            except Exception as e:
+                # Connection failed, mark for cleanup
+                logger.warning(f"Failed to send WebSocket message: {e}")
                 disconnected.add(connection)
 
         # Clean up disconnected
