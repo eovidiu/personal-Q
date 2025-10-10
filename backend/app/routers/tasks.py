@@ -1,8 +1,9 @@
 """
-Task API endpoints.
+ABOUTME: Task API endpoints with rate limiting to control LLM costs.
+ABOUTME: Task creation and execution are heavily rate limited.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import Optional
@@ -13,16 +14,19 @@ from app.schemas.task import TaskCreate, TaskUpdate, Task, TaskList
 from app.models.task import Task as TaskModel, TaskStatus, TaskPriority
 from app.models.agent import Agent
 from app.workers.tasks import execute_agent_task
+from app.middleware.rate_limit import limiter, get_rate_limit
 
 router = APIRouter()
 
 
 @router.post("/", response_model=Task, status_code=201)
+@limiter.limit(get_rate_limit("task_create"))
 async def create_task(
+    request: Request,
     task_data: TaskCreate,
     db: AsyncSession = Depends(get_db)
 ):
-    """Create a new task and trigger execution."""
+    """Create a new task and trigger execution (rate limited)."""
     # Verify agent exists
     result = await db.execute(select(Agent).where(Agent.id == task_data.agent_id))
     agent = result.scalar_one_or_none()
@@ -46,7 +50,9 @@ async def create_task(
 
 
 @router.get("/", response_model=TaskList)
+@limiter.limit(get_rate_limit("read_operations"))
 async def list_tasks(
+    request: Request,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     agent_id: Optional[str] = Query(None),

@@ -1,8 +1,9 @@
 """
-Agent API endpoints.
+ABOUTME: Agent API endpoints with rate limiting for write operations.
+ABOUTME: Agent creation and deletion are rate limited to prevent abuse.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List
 
@@ -10,16 +11,19 @@ from app.db.database import get_db
 from app.schemas.agent import AgentCreate, AgentUpdate, AgentStatusUpdate, Agent, AgentList
 from app.models.agent import AgentStatus, AgentType
 from app.services.agent_service import AgentService
+from app.middleware.rate_limit import limiter, get_rate_limit
 
 router = APIRouter()
 
 
 @router.post("/", response_model=Agent, status_code=201)
+@limiter.limit(get_rate_limit("agent_create"))
 async def create_agent(
+    request: Request,
     agent_data: AgentCreate,
     db: AsyncSession = Depends(get_db)
 ):
-    """Create a new agent."""
+    """Create a new agent (rate limited)."""
     try:
         agent = await AgentService.create_agent(db, agent_data)
         return agent
@@ -118,11 +122,13 @@ async def update_agent_status(
 
 
 @router.delete("/{agent_id}", status_code=204)
+@limiter.limit(get_rate_limit("agent_delete"))
 async def delete_agent(
+    request: Request,
     agent_id: str,
     db: AsyncSession = Depends(get_db)
 ):
-    """Delete an agent."""
+    """Delete an agent (rate limited)."""
     deleted = await AgentService.delete_agent(db, agent_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Agent not found")

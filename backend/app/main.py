@@ -1,14 +1,18 @@
 """
-Main FastAPI application entry point.
+ABOUTME: Main FastAPI application entry point with rate limiting and CORS.
+ABOUTME: Configures all routers, middleware, and lifecycle events.
 """
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from config.settings import settings
 from app.db.database import init_db, close_db
+from app.middleware.rate_limit import limiter
 
 
 # Configure logging
@@ -45,6 +49,10 @@ app = FastAPI(
     redoc_url=f"{settings.api_prefix}/redoc",
     openapi_url=f"{settings.api_prefix}/openapi.json"
 )
+
+# Add rate limiter to app state
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Configure CORS
 app.add_middleware(
