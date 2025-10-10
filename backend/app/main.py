@@ -13,6 +13,7 @@ from slowapi.errors import RateLimitExceeded
 from config.settings import settings
 from app.db.database import init_db, close_db
 from app.middleware.rate_limit import limiter
+from app.middleware.security_headers import SecurityHeadersMiddleware
 
 
 # Configure logging
@@ -53,6 +54,9 @@ app = FastAPI(
 # Add rate limiter to app state
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Add security headers middleware
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Configure CORS
 app.add_middleware(
