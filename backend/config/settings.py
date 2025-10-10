@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_format: str = "json"
 
+    # Security
+    encryption_key: Optional[str] = None  # Fernet key for encrypting sensitive data
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse CORS origins string into list."""

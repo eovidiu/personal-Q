@@ -1,15 +1,17 @@
 """
-API key storage model for external integrations.
+ABOUTME: API key storage model for external integrations with encrypted sensitive fields.
+ABOUTME: All credentials are encrypted at rest using Fernet symmetric encryption.
 """
 
 from sqlalchemy import Column, String, Text, DateTime, Boolean
 from sqlalchemy.sql import func
 
 from app.db.database import Base
+from app.db.encrypted_types import EncryptedString
 
 
 class APIKey(Base):
-    """API key model for storing external service credentials."""
+    """API key model for storing external service credentials securely."""
 
     __tablename__ = "api_keys"
 
@@ -19,13 +21,13 @@ class APIKey(Base):
     service_name = Column(String, unique=True, nullable=False, index=True)
     # e.g., "anthropic", "slack", "microsoft_graph", "obsidian"
 
-    # Credentials (stored as plain text per requirements)
-    api_key = Column(Text, nullable=True)
-    access_token = Column(Text, nullable=True)
-    refresh_token = Column(Text, nullable=True)
-    client_id = Column(String, nullable=True)
-    client_secret = Column(Text, nullable=True)
-    tenant_id = Column(String, nullable=True)
+    # Credentials (encrypted at rest)
+    api_key = Column(EncryptedString, nullable=True)
+    access_token = Column(EncryptedString, nullable=True)
+    refresh_token = Column(EncryptedString, nullable=True)
+    client_id = Column(String, nullable=True)  # Not sensitive, can be plaintext
+    client_secret = Column(EncryptedString, nullable=True)
+    tenant_id = Column(String, nullable=True)  # Not sensitive, can be plaintext
 
     # Configuration
     config = Column(Text, nullable=True)  # JSON string for additional config
