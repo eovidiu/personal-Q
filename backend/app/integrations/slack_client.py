@@ -1,6 +1,6 @@
 """
 ABOUTME: Slack integration client with proper async/await support.
-ABOUTME: Uses asyncio.to_thread to avoid blocking the event loop.
+ABOUTME: Uses asyncio.to_thread, includes timeouts and retry logic for resilience.
 """
 
 import asyncio
@@ -8,12 +8,22 @@ import logging
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from typing import List, Dict, Any, Optional
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+    before_sleep_log
+)
 
 logger = logging.getLogger(__name__)
 
 
 class SlackClient:
-    """Slack API client wrapper with proper async support."""
+    """Slack API client wrapper with proper async support and resilience."""
+
+    # Timeout for Slack API calls (seconds)
+    TIMEOUT = 10.0
 
     def __init__(self, bot_token: Optional[str] = None):
         """
@@ -32,15 +42,25 @@ class SlackClient:
 
     @property
     def client(self) -> WebClient:
-        """Get Slack WebClient instance."""
+        """Get Slack WebClient instance with timeout."""
         if not self.bot_token:
             raise ValueError("Slack bot token not configured")
 
         if self._client is None:
-            self._client = WebClient(token=self.bot_token)
+            self._client = WebClient(
+                token=self.bot_token,
+                timeout=self.TIMEOUT
+            )
 
         return self._client
 
+    @retry(
+        retry=retry_if_exception_type(SlackApiError),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True
+    )
     async def post_message(
         self,
         channel: str,

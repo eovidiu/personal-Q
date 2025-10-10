@@ -16,8 +16,8 @@ chromadb==0.5.18
 anthropic==0.39.0
 
 # CrewAI
-crewai==0.86.0
-crewai-tools>=0.17.0
+# crewai==0.86.0  # Temporarily disabled - depends on crewai-tools which takes too long
+# crewai-tools>=0.17.0  # Temporarily disabled - takes too long to resolve dependencies
 
 # Task Queue
 celery==5.4.0
