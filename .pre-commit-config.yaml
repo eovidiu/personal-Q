@@ -8,7 +8,7 @@ repos:
     rev: 24.10.0
     hooks:
       - id: black
-        language_version: python3.11
+        language_version: python3.12
         args: [--line-length=100]
         files: ^backend/
 
@@ -59,4 +59,3 @@ repos:
       - id: isort
         args: [--profile, black, --line-length, "100"]
         files: ^backend/
-
