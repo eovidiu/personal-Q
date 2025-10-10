@@ -14,6 +14,7 @@ from config.settings import settings
 from app.db.database import init_db, close_db
 from app.middleware.rate_limit import limiter
 from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.middleware.logging_middleware import RequestLoggingMiddleware
 from app.services.cache_service import cache_service
 
 
@@ -60,6 +61,9 @@ app = FastAPI(
 # Add rate limiter to app state
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Add request logging middleware (first, to log all requests)
+app.add_middleware(RequestLoggingMiddleware)
 
 # Add security headers middleware
 app.add_middleware(SecurityHeadersMiddleware)
