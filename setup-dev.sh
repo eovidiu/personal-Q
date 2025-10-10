@@ -25,7 +25,7 @@ echo "✅ Python version OK: $PYTHON_VERSION"
 
 # Install pre-commit
 echo "📦 Installing pre-commit..."
-pip install pre-commit
+pip3 install pre-commit
 
 # Install pre-commit hooks
 echo "🪝 Installing pre-commit hooks..."
@@ -36,7 +36,7 @@ echo "✅ Pre-commit hooks installed!"
 # Install backend development dependencies
 echo "📦 Installing backend development dependencies..."
 cd backend
-pip install -e ".[dev]"
+pip3 install -e ".[dev]"
 cd ..
 
 echo "✅ Backend dependencies installed!"
