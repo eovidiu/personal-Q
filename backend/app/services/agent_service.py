@@ -11,6 +11,7 @@ from datetime import datetime
 from app.models.agent import Agent, AgentStatus, AgentType
 from app.models.activity import Activity, ActivityType, ActivityStatus
 from app.schemas.agent import AgentCreate, AgentUpdate, AgentStatusUpdate
+from app.utils.datetime_utils import utcnow
 
 
 class AgentService:
@@ -175,7 +176,7 @@ class AgentService:
         for field, value in update_data.items():
             setattr(agent, field, value)
 
-        agent.updated_at = datetime.utcnow()
+        agent.updated_at = utcnow()
 
         await db.commit()
         await db.refresh(agent)
@@ -207,10 +208,10 @@ class AgentService:
 
         old_status = agent.status
         agent.status = status_data.status
-        agent.updated_at = datetime.utcnow()
+        agent.updated_at = utcnow()
 
         if status_data.status == AgentStatus.ACTIVE:
-            agent.last_active = datetime.utcnow()
+            agent.last_active = utcnow()
 
         await db.commit()
         await db.refresh(agent)

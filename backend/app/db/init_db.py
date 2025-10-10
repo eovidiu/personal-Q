@@ -12,6 +12,7 @@ import sys
 from app.db.database import AsyncSessionLocal, Base, engine
 from app.db.chroma_client import chroma_client
 from app.models import Agent, AgentStatus, AgentType, APIKey
+from app.utils.datetime_utils import utcnow
 
 
 async def init_database():
@@ -51,7 +52,7 @@ async def seed_default_data():
                 "tags": ["support", "customer-service", "conversational"],
                 "tasks_completed": 1247,
                 "tasks_failed": 60,
-                "last_active": datetime.utcnow(),
+                "last_active": utcnow(),
                 "tools_config": {"slack": True, "email": True}
             },
             {
@@ -67,7 +68,7 @@ async def seed_default_data():
                 "tags": ["analytics", "data", "analytical"],
                 "tasks_completed": 856,
                 "tasks_failed": 24,
-                "last_active": datetime.utcnow(),
+                "last_active": utcnow(),
                 "tools_config": {"onedrive": True, "obsidian": True}
             },
             {
@@ -83,7 +84,7 @@ async def seed_default_data():
                 "tags": ["content", "marketing", "creative"],
                 "tasks_completed": 543,
                 "tasks_failed": 45,
-                "last_active": datetime.utcnow(),
+                "last_active": utcnow(),
                 "tools_config": {"obsidian": True}
             },
             {
@@ -99,7 +100,7 @@ async def seed_default_data():
                 "tags": ["analytical", "code", "review"],
                 "tasks_completed": 234,
                 "tasks_failed": 12,
-                "last_active": datetime.utcnow(),
+                "last_active": utcnow(),
                 "tools_config": {}
             },
             {
@@ -131,7 +132,7 @@ async def seed_default_data():
                 "tags": ["analytical", "research", "analysis"],
                 "tasks_completed": 412,
                 "tasks_failed": 32,
-                "last_active": datetime.utcnow(),
+                "last_active": utcnow(),
                 "tools_config": {"onedrive": True, "obsidian": True}
             }
         ]

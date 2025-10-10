@@ -10,6 +10,7 @@ from typing import List, Dict, Any, Optional
 import uuid
 
 from app.db.chroma_client import get_chroma_client
+from app.utils.datetime_utils import utcnow
 from config.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -44,7 +45,7 @@ class MemoryService:
             Memory ID
         """
         memory_id = str(uuid.uuid4())
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = utcnow().isoformat()
 
         # Run ChromaDB operation in executor
         await asyncio.to_thread(
@@ -81,7 +82,7 @@ class MemoryService:
             Memory ID
         """
         memory_id = str(uuid.uuid4())
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = utcnow().isoformat()
 
         # Run ChromaDB operation in executor
         await asyncio.to_thread(
@@ -116,7 +117,7 @@ class MemoryService:
             Document ID
         """
         doc_id = str(uuid.uuid4())
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = utcnow().isoformat()
 
         # Run ChromaDB operation in executor
         await asyncio.to_thread(
@@ -295,7 +296,7 @@ class MemoryService:
             Number of entries deleted
         """
         days = days or settings.memory_retention_days
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = utcnow() - timedelta(days=days)
         cutoff_str = cutoff_date.isoformat()
 
         deleted_count = 0

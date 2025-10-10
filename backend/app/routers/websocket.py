@@ -6,6 +6,8 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import Dict, Set
 import json
 
+from app.utils.datetime_utils import utcnow
+
 router = APIRouter()
 
 
@@ -45,7 +47,7 @@ class ConnectionManager:
                 await connection.send_json({
                     "event_type": event_type,
                     "data": message,
-                    "timestamp": __import__("datetime").datetime.utcnow().isoformat()
+                    "timestamp": utcnow().isoformat()
                 })
             except Exception:
                 disconnected.add(connection)

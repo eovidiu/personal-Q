@@ -11,6 +11,7 @@ from app.db.database import get_db
 from app.models.agent import Agent, AgentStatus
 from app.models.task import Task, TaskStatus
 from app.services.memory_service import get_memory_service
+from app.utils.datetime_utils import utcnow
 
 router = APIRouter()
 
@@ -45,7 +46,7 @@ async def get_dashboard_metrics(db: AsyncSession = Depends(get_db)):
     avg_success_rate = (total_completed / total_all * 100) if total_all > 0 else 0
 
     # Weekly trend (mock for now)
-    one_week_ago = datetime.utcnow() - timedelta(days=7)
+    one_week_ago = utcnow() - timedelta(days=7)
     weekly_tasks_result = await db.execute(
         select(func.count(Task.id)).where(
             Task.created_at >= one_week_ago,
