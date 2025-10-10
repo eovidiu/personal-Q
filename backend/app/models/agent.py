@@ -3,6 +3,7 @@ Agent database model.
 """
 
 from sqlalchemy import Column, String, Text, Float, Integer, DateTime, Enum, JSON, Boolean
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from datetime import datetime
 import enum
@@ -59,6 +60,29 @@ class Agent(Base):
     # Timestamps
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    tasks = relationship(
+        "Task",
+        back_populates="agent",
+        cascade="all, delete-orphan",
+        lazy="select"  # Load when accessed (prevents N+1)
+    )
+
+    activities = relationship(
+        "Activity",
+        back_populates="agent",
+        cascade="all, delete-orphan",
+        lazy="select",
+        order_by="Activity.created_at.desc()"
+    )
+
+    schedules = relationship(
+        "Schedule",
+        back_populates="agent",
+        cascade="all, delete-orphan",
+        lazy="select"
+    )
 
     @property
     def success_rate(self) -> float:

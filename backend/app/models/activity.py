@@ -3,6 +3,7 @@ Activity log database model.
 """
 
 from sqlalchemy import Column, String, Text, DateTime, Enum, JSON, ForeignKey
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
 
@@ -53,6 +54,9 @@ class Activity(Base):
 
     # Timestamps
     created_at = Column(DateTime, default=func.now(), nullable=False, index=True)
+
+    # Relationships
+    agent = relationship("Agent", back_populates="activities")
 
     def __repr__(self):
         return f"<Activity {self.activity_type.value} ({self.status.value})>"

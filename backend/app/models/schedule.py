@@ -3,6 +3,7 @@ Schedule model for agent task scheduling.
 """
 
 from sqlalchemy import Column, String, Text, DateTime, Boolean, ForeignKey, JSON
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.db.database import Base
@@ -35,6 +36,9 @@ class Schedule(Base):
     # Timestamps
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    agent = relationship("Agent", back_populates="schedules")
 
     def __repr__(self):
         return f"<Schedule {self.name} ({self.cron_expression})>"

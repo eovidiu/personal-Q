@@ -3,6 +3,7 @@ Task database model.
 """
 
 from sqlalchemy import Column, String, Text, DateTime, Enum, JSON, ForeignKey, Integer
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
 
@@ -57,6 +58,9 @@ class Task(Base):
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    agent = relationship("Agent", back_populates="tasks")
 
     def __repr__(self):
         return f"<Task {self.title} ({self.status.value})>"
