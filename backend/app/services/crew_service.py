@@ -1,7 +1,6 @@
 """
-CrewAI service for agent orchestration.
-Note: CrewAI is currently disabled due to dependency resolution issues.
-This module provides stub implementations for compatibility.
+ABOUTME: CrewAI service for multi-agent orchestration and collaboration.
+ABOUTME: Uses LangChain-compatible ChatAnthropic for proper integration.
 """
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +13,7 @@ from config.settings import settings
 # Try to import CrewAI, but provide stubs if not available
 try:
     from crewai import Agent as CrewAgent, Task as CrewTask, Crew, Process
+    from langchain_anthropic import ChatAnthropic
     CREWAI_AVAILABLE = True
 except ImportError:
     CREWAI_AVAILABLE = False
@@ -22,6 +22,7 @@ except ImportError:
     CrewTask = None
     Crew = None
     Process = None
+    ChatAnthropic = None
 
 
 class CrewService:
@@ -88,12 +89,22 @@ class CrewService:
                 "task_description": task_description
             }
 
-        # Configure LLM for agent
-        # Note: In production, get API key from database settings
-        # For now using settings default
-        from anthropic import Anthropic
+        # Configure LLM for agent using LangChain-compatible ChatAnthropic
+        if not llm_service.api_key:
+            return {
+                "success": False,
+                "error": "Anthropic API key not configured. Please set API key in Settings.",
+                "agent_id": agent.id,
+                "task_description": task_description
+            }
 
-        llm = Anthropic(api_key=llm_service.api_key or "dummy-key")
+        llm = ChatAnthropic(
+            model=agent.model or settings.default_model,
+            anthropic_api_key=llm_service.api_key,
+            temperature=agent.temperature or settings.default_temperature,
+            max_tokens=agent.max_tokens or settings.default_max_tokens,
+            streaming=True  # Enable streaming for real-time responses
+        )
 
         # Create CrewAI agent
         crew_agent = CrewService._create_crew_agent(agent, llm)
@@ -161,8 +172,22 @@ class CrewService:
         if len(agents) != len(task_descriptions):
             raise ValueError("Number of agents must match number of tasks")
 
-        from anthropic import Anthropic
-        llm = Anthropic(api_key=llm_service.api_key or "dummy-key")
+        if not llm_service.api_key:
+            return {
+                "success": False,
+                "error": "Anthropic API key not configured. Please set API key in Settings.",
+                "agents": [{"id": a.id, "name": a.name} for a in agents]
+            }
+
+        # Use first agent's config as default for multi-agent crew
+        primary_agent = agents[0]
+        llm = ChatAnthropic(
+            model=primary_agent.model or settings.default_model,
+            anthropic_api_key=llm_service.api_key,
+            temperature=primary_agent.temperature or settings.default_temperature,
+            max_tokens=primary_agent.max_tokens or settings.default_max_tokens,
+            streaming=True
+        )
 
         # Create CrewAI agents
         crew_agents = [
