@@ -39,6 +39,59 @@ class ObsidianClient:
 
         return path
 
+    def _validate_note_path(self, note_path: str) -> Optional[Path]:
+        """
+        Validate and sanitize note path to prevent path traversal attacks.
+
+        Args:
+            note_path: User-provided note path
+
+        Returns:
+            Validated Path object or None if invalid
+
+        Security:
+            - Blocks path traversal attempts (.., absolute paths)
+            - Ensures resolved path stays within vault
+            - Only allows .md files
+            - Logs suspicious attempts
+        """
+        try:
+            vault = self._get_vault_path().resolve()
+
+            # Block absolute paths
+            if note_path.startswith("/") or note_path.startswith("\\"):
+                logger.warning(f"Path traversal attempt blocked: absolute path '{note_path}'")
+                return None
+
+            # Block any path containing .. (path traversal)
+            if ".." in note_path:
+                logger.warning(f"Path traversal attempt blocked: '..' found in '{note_path}'")
+                return None
+
+            # Remove leading slashes
+            safe_path = note_path.lstrip("/").lstrip("\\")
+
+            # Build full path and resolve symlinks
+            full_path = (vault / safe_path).resolve()
+
+            # Critical: Ensure resolved path is still within vault
+            try:
+                full_path.relative_to(vault)
+            except ValueError:
+                logger.warning(f"Path traversal attempt blocked: '{note_path}' escapes vault")
+                return None
+
+            # Only allow markdown files (or no extension for new files)
+            if full_path.suffix and full_path.suffix not in [".md"]:
+                logger.warning(f"Invalid file type blocked: '{note_path}' (only .md allowed)")
+                return None
+
+            return full_path
+
+        except Exception as e:
+            logger.error(f"Error validating path '{note_path}': {e}")
+            return None
+
     async def list_notes(
         self,
         folder: str = "",
@@ -55,8 +108,26 @@ class ObsidianClient:
             List of notes
         """
         try:
-            vault = self._get_vault_path()
+            vault = self._get_vault_path().resolve()
+            
+            # Block path traversal in folder parameter
+            if folder and ".." in folder:
+                return {
+                    "success": False,
+                    "error": "Invalid folder path: path traversal detected"
+                }
+            
             target_dir = vault / folder if folder else vault
+
+            # Validate folder path is within vault
+            if folder:
+                try:
+                    target_dir.resolve().relative_to(vault)
+                except ValueError:
+                    return {
+                        "success": False,
+                        "error": "Invalid folder path: escapes vault"
+                    }
 
             if not target_dir.exists():
                 return {
@@ -110,8 +181,14 @@ class ObsidianClient:
             Note content
         """
         try:
-            vault = self._get_vault_path()
-            full_path = vault / note_path
+            # Validate path to prevent traversal attacks
+            full_path = self._validate_note_path(note_path)
+
+            if full_path is None:
+                return {
+                    "success": False,
+                    "error": "Invalid path: path traversal or invalid file type detected"
+                }
 
             if not full_path.exists():
                 return {
@@ -170,11 +247,29 @@ class ObsidianClient:
             Write status
         """
         try:
-            vault = self._get_vault_path()
-            full_path = vault / note_path
+            # Validate path to prevent traversal attacks
+            full_path = self._validate_note_path(note_path)
+
+            if full_path is None:
+                return {
+                    "success": False,
+                    "error": "Invalid path: path traversal or invalid file type detected"
+                }
+
+            vault = self._get_vault_path().resolve()
+
+            # Ensure parent directory is within vault
+            parent = full_path.parent
+            try:
+                parent.relative_to(vault)
+            except ValueError:
+                return {
+                    "success": False,
+                    "error": "Invalid directory path: escapes vault"
+                }
 
             # Create parent directories if needed (sync but fast)
-            await asyncio.to_thread(full_path.parent.mkdir, parents=True, exist_ok=True)
+            await asyncio.to_thread(parent.mkdir, parents=True, exist_ok=True)
 
             # Build final content
             final_content = content
@@ -219,8 +314,32 @@ class ObsidianClient:
             Matching notes
         """
         try:
-            vault = self._get_vault_path()
+            # Limit query length to prevent DoS
+            if len(query) > 1000:
+                return {
+                    "success": False,
+                    "error": "Query too long (max 1000 characters)"
+                }
+
+            vault = self._get_vault_path().resolve()
+            
+            # Block path traversal in folder parameter
+            if folder and ".." in folder:
+                return {
+                    "success": False,
+                    "error": "Invalid folder path: path traversal detected"
+                }
+            
             target_dir = vault / folder if folder else vault
+
+            # Validate target directory is within vault
+            try:
+                target_dir.resolve().relative_to(vault)
+            except ValueError:
+                return {
+                    "success": False,
+                    "error": "Invalid folder path: escapes vault"
+                }
 
             matches = []
 
@@ -228,6 +347,13 @@ class ObsidianClient:
             def _search_sync():
                 results = []
                 for note_path in target_dir.glob("**/*.md"):
+                    # Ensure each found file is actually within vault (no symlink escape)
+                    try:
+                        note_path.resolve().relative_to(vault)
+                    except ValueError:
+                        logger.warning(f"Skipping file outside vault: {note_path}")
+                        continue
+
                     if note_path.is_file():
                         try:
                             content = note_path.read_text(encoding="utf-8")
@@ -277,13 +403,26 @@ class ObsidianClient:
             Delete status
         """
         try:
-            vault = self._get_vault_path()
-            full_path = vault / note_path
+            # Validate path to prevent traversal attacks
+            full_path = self._validate_note_path(note_path)
+
+            if full_path is None:
+                return {
+                    "success": False,
+                    "error": "Invalid path: path traversal or invalid file type detected"
+                }
 
             if not full_path.exists():
                 return {
                     "success": False,
                     "error": f"Note not found: {note_path}"
+                }
+
+            # Only delete files, not directories
+            if not full_path.is_file():
+                return {
+                    "success": False,
+                    "error": "Can only delete files, not directories"
                 }
 
             # Run unlink in executor

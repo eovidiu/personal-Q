@@ -35,3 +35,9 @@ rules:
     appliesToTools: ["claude"]
     tags: ["tooling"]
 
+  - path: rules/tools/security-testing-agent.md
+    id: rules.agent.security-testing
+    version: 1.0.0
+    appliesToTools: ["security-scanner"]
+    tags: ["security", "cve", "testing"]
+

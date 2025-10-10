@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     # Security
     encryption_key: Optional[str] = None  # Fernet key for encrypting sensitive data
 
+    # Google OAuth
+    google_client_id: Optional[str] = None
+    google_client_secret: Optional[str] = None
+    jwt_secret_key: Optional[str] = None
+    allowed_email: Optional[str] = None  # Single user email allowed to authenticate
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse CORS origins string into list."""
