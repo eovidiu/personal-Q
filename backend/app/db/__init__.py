@@ -5,7 +5,7 @@ Database configuration and utilities.
 __all__ = [
     "Base",
     "engine",
-    "async_session_maker",
+    "AsyncSessionLocal",
     "get_db",
     "init_db",
     "close_db",
@@ -14,7 +14,6 @@ __all__ = [
     "EncryptedString",
 ]
 
-from .database import Base, engine, async_session_maker, get_db, init_db, close_db
 from .chroma_client import ChromaDBClient, get_chroma_client
+from .database import AsyncSessionLocal, Base, close_db, engine, get_db, init_db
 from .encrypted_types import EncryptedString
-
