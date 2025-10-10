@@ -1,14 +1,19 @@
 """
-Slack integration client.
+ABOUTME: Slack integration client with proper async/await support.
+ABOUTME: Uses asyncio.to_thread to avoid blocking the event loop.
 """
 
+import asyncio
+import logging
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from typing import List, Dict, Any, Optional
 
+logger = logging.getLogger(__name__)
+
 
 class SlackClient:
-    """Slack API client wrapper."""
+    """Slack API client wrapper with proper async support."""
 
     def __init__(self, bot_token: Optional[str] = None):
         """
@@ -43,7 +48,7 @@ class SlackClient:
         blocks: Optional[List[Dict[str, Any]]] = None
     ) -> Dict[str, Any]:
         """
-        Post message to Slack channel.
+        Post message to Slack channel (async).
 
         Args:
             channel: Channel ID or name
@@ -54,7 +59,9 @@ class SlackClient:
             Response from Slack API
         """
         try:
-            response = self.client.chat_postMessage(
+            # Run blocking Slack API call in executor to avoid blocking event loop
+            response = await asyncio.to_thread(
+                self.client.chat_postMessage,
                 channel=channel,
                 text=text,
                 blocks=blocks
@@ -65,6 +72,7 @@ class SlackClient:
                 "channel": response["channel"]
             }
         except SlackApiError as e:
+            logger.error(f"Slack API error in post_message: {e.response['error']}")
             return {
                 "success": False,
                 "error": str(e.response["error"])
@@ -77,7 +85,7 @@ class SlackClient:
         oldest: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Read messages from Slack channel.
+        Read messages from Slack channel (async).
 
         Args:
             channel: Channel ID
@@ -88,7 +96,9 @@ class SlackClient:
             Messages from channel
         """
         try:
-            response = self.client.conversations_history(
+            # Run blocking call in executor
+            response = await asyncio.to_thread(
+                self.client.conversations_history,
                 channel=channel,
                 limit=limit,
                 oldest=oldest
@@ -99,6 +109,7 @@ class SlackClient:
                 "has_more": response.get("has_more", False)
             }
         except SlackApiError as e:
+            logger.error(f"Slack API error in read_messages: {e.response['error']}")
             return {
                 "success": False,
                 "error": str(e.response["error"])
@@ -106,13 +117,16 @@ class SlackClient:
 
     async def list_channels(self) -> Dict[str, Any]:
         """
-        List available channels.
+        List available channels (async).
 
         Returns:
             List of channels
         """
         try:
-            response = self.client.conversations_list()
+            # Run blocking call in executor
+            response = await asyncio.to_thread(
+                self.client.conversations_list
+            )
             return {
                 "success": True,
                 "channels": [
@@ -125,6 +139,7 @@ class SlackClient:
                 ]
             }
         except SlackApiError as e:
+            logger.error(f"Slack API error in list_channels: {e.response['error']}")
             return {
                 "success": False,
                 "error": str(e.response["error"])
@@ -137,7 +152,7 @@ class SlackClient:
         emoji: str
     ) -> Dict[str, Any]:
         """
-        Add reaction to message.
+        Add reaction to message (async).
 
         Args:
             channel: Channel ID
@@ -148,13 +163,16 @@ class SlackClient:
             Response status
         """
         try:
-            self.client.reactions_add(
+            # Run blocking call in executor
+            await asyncio.to_thread(
+                self.client.reactions_add,
                 channel=channel,
                 timestamp=timestamp,
                 name=emoji
             )
             return {"success": True}
         except SlackApiError as e:
+            logger.error(f"Slack API error in react_to_message: {e.response['error']}")
             return {
                 "success": False,
                 "error": str(e.response["error"])
@@ -162,7 +180,7 @@ class SlackClient:
 
     async def validate_token(self, token: str) -> bool:
         """
-        Validate Slack bot token.
+        Validate Slack bot token (async).
 
         Args:
             token: Token to validate
@@ -172,9 +190,11 @@ class SlackClient:
         """
         try:
             client = WebClient(token=token)
-            client.auth_test()
+            # Run blocking call in executor
+            await asyncio.to_thread(client.auth_test)
             return True
-        except SlackApiError:
+        except SlackApiError as e:
+            logger.error(f"Slack token validation failed: {e}")
             return False
 
 

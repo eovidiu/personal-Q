@@ -1,14 +1,19 @@
 """
-Obsidian vault integration (local file I/O).
+ABOUTME: Obsidian vault integration with proper async file I/O using aiofiles.
+ABOUTME: All file operations are non-blocking to prevent event loop starvation.
 """
 
-import os
+import asyncio
+import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+import aiofiles
+
+logger = logging.getLogger(__name__)
 
 
 class ObsidianClient:
-    """Obsidian vault client for file operations."""
+    """Obsidian vault client with async file operations."""
 
     def __init__(self, vault_path: Optional[str] = None):
         """
@@ -40,7 +45,7 @@ class ObsidianClient:
         recursive: bool = True
     ) -> Dict[str, Any]:
         """
-        List notes in vault.
+        List notes in vault (async).
 
         Args:
             folder: Subfolder (relative to vault)
@@ -62,15 +67,21 @@ class ObsidianClient:
             notes = []
             pattern = "**/*.md" if recursive else "*.md"
 
-            for note_path in target_dir.glob(pattern):
-                if note_path.is_file():
-                    relative_path = note_path.relative_to(vault)
-                    notes.append({
-                        "name": note_path.stem,
-                        "path": str(relative_path),
-                        "size": note_path.stat().st_size,
-                        "modified": note_path.stat().st_mtime
-                    })
+            # File system globbing is sync but fast, run in executor for safety
+            def _list_notes_sync():
+                result = []
+                for note_path in target_dir.glob(pattern):
+                    if note_path.is_file():
+                        relative_path = note_path.relative_to(vault)
+                        result.append({
+                            "name": note_path.stem,
+                            "path": str(relative_path),
+                            "size": note_path.stat().st_size,
+                            "modified": note_path.stat().st_mtime
+                        })
+                return result
+
+            notes = await asyncio.to_thread(_list_notes_sync)
 
             return {
                 "success": True,
@@ -79,6 +90,7 @@ class ObsidianClient:
             }
 
         except Exception as e:
+            logger.error(f"Error listing notes: {e}")
             return {
                 "success": False,
                 "error": str(e)
@@ -89,7 +101,7 @@ class ObsidianClient:
         note_path: str
     ) -> Dict[str, Any]:
         """
-        Read note content.
+        Read note content (async with aiofiles).
 
         Args:
             note_path: Note path (relative to vault)
@@ -107,7 +119,9 @@ class ObsidianClient:
                     "error": f"Note not found: {note_path}"
                 }
 
-            content = full_path.read_text(encoding="utf-8")
+            # Use aiofiles for async file reading
+            async with aiofiles.open(full_path, mode='r', encoding='utf-8') as f:
+                content = await f.read()
 
             # Parse frontmatter if exists
             frontmatter = {}
@@ -132,6 +146,7 @@ class ObsidianClient:
             }
 
         except Exception as e:
+            logger.error(f"Error reading note {note_path}: {e}")
             return {
                 "success": False,
                 "error": str(e)
@@ -144,7 +159,7 @@ class ObsidianClient:
         frontmatter: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
-        Write note to vault.
+        Write note to vault (async with aiofiles).
 
         Args:
             note_path: Note path (relative to vault)
@@ -158,8 +173,8 @@ class ObsidianClient:
             vault = self._get_vault_path()
             full_path = vault / note_path
 
-            # Create parent directories if needed
-            full_path.parent.mkdir(parents=True, exist_ok=True)
+            # Create parent directories if needed (sync but fast)
+            await asyncio.to_thread(full_path.parent.mkdir, parents=True, exist_ok=True)
 
             # Build final content
             final_content = content
@@ -172,7 +187,9 @@ class ObsidianClient:
                 fm_lines.append("")
                 final_content = "\n".join(fm_lines) + content
 
-            full_path.write_text(final_content, encoding="utf-8")
+            # Use aiofiles for async file writing
+            async with aiofiles.open(full_path, mode='w', encoding='utf-8') as f:
+                await f.write(final_content)
 
             return {
                 "success": True,
@@ -180,6 +197,7 @@ class ObsidianClient:
             }
 
         except Exception as e:
+            logger.error(f"Error writing note {note_path}: {e}")
             return {
                 "success": False,
                 "error": str(e)
@@ -191,7 +209,7 @@ class ObsidianClient:
         folder: str = ""
     ) -> Dict[str, Any]:
         """
-        Search notes by content.
+        Search notes by content (async).
 
         Args:
             query: Search query
@@ -206,25 +224,31 @@ class ObsidianClient:
 
             matches = []
 
-            for note_path in target_dir.glob("**/*.md"):
-                if note_path.is_file():
-                    try:
-                        content = note_path.read_text(encoding="utf-8")
-                        if query.lower() in content.lower():
-                            relative_path = note_path.relative_to(vault)
-                            # Get snippet around match
-                            idx = content.lower().find(query.lower())
-                            start = max(0, idx - 50)
-                            end = min(len(content), idx + len(query) + 50)
-                            snippet = content[start:end]
+            # Run search in executor to avoid blocking
+            def _search_sync():
+                results = []
+                for note_path in target_dir.glob("**/*.md"):
+                    if note_path.is_file():
+                        try:
+                            content = note_path.read_text(encoding="utf-8")
+                            if query.lower() in content.lower():
+                                relative_path = note_path.relative_to(vault)
+                                # Get snippet around match
+                                idx = content.lower().find(query.lower())
+                                start = max(0, idx - 50)
+                                end = min(len(content), idx + len(query) + 50)
+                                snippet = content[start:end]
 
-                            matches.append({
-                                "name": note_path.stem,
-                                "path": str(relative_path),
-                                "snippet": f"...{snippet}..."
-                            })
-                    except Exception:
-                        continue
+                                results.append({
+                                    "name": note_path.stem,
+                                    "path": str(relative_path),
+                                    "snippet": f"...{snippet}..."
+                                })
+                        except Exception:
+                            continue
+                return results
+
+            matches = await asyncio.to_thread(_search_sync)
 
             return {
                 "success": True,
@@ -233,6 +257,7 @@ class ObsidianClient:
             }
 
         except Exception as e:
+            logger.error(f"Error searching notes: {e}")
             return {
                 "success": False,
                 "error": str(e)
@@ -243,7 +268,7 @@ class ObsidianClient:
         note_path: str
     ) -> Dict[str, Any]:
         """
-        Delete note from vault.
+        Delete note from vault (async).
 
         Args:
             note_path: Note path (relative to vault)
@@ -261,11 +286,13 @@ class ObsidianClient:
                     "error": f"Note not found: {note_path}"
                 }
 
-            full_path.unlink()
+            # Run unlink in executor
+            await asyncio.to_thread(full_path.unlink)
 
             return {"success": True}
 
         except Exception as e:
+            logger.error(f"Error deleting note {note_path}: {e}")
             return {
                 "success": False,
                 "error": str(e)
@@ -273,7 +300,7 @@ class ObsidianClient:
 
     async def validate_vault_path(self, vault_path: str) -> bool:
         """
-        Validate vault path.
+        Validate vault path (async).
 
         Args:
             vault_path: Path to validate
@@ -282,15 +309,19 @@ class ObsidianClient:
             True if valid Obsidian vault
         """
         try:
-            path = Path(vault_path)
-            if not path.exists():
-                return False
+            def _validate_sync():
+                path = Path(vault_path)
+                if not path.exists():
+                    return False
 
-            # Check for .obsidian folder (indicator of Obsidian vault)
-            obsidian_folder = path / ".obsidian"
-            return obsidian_folder.exists() and obsidian_folder.is_dir()
+                # Check for .obsidian folder (indicator of Obsidian vault)
+                obsidian_folder = path / ".obsidian"
+                return obsidian_folder.exists() and obsidian_folder.is_dir()
 
-        except Exception:
+            return await asyncio.to_thread(_validate_sync)
+
+        except Exception as e:
+            logger.error(f"Error validating vault path: {e}")
             return False
 
 
