@@ -5,7 +5,6 @@ ABOUTME: Automatically encrypts on write and decrypts on read transparently.
 
 import logging
 from sqlalchemy import LargeBinary, TypeDecorator
-from app.services.encryption_service import encryption_service
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +33,8 @@ class EncryptedString(TypeDecorator):
         """
         if value is not None:
             try:
+                # Import here to avoid circular dependency
+                from app.services.encryption_service import encryption_service
                 return encryption_service.encrypt(value)
             except Exception as e:
                 logger.error(f"Failed to encrypt value: {e}")
@@ -54,6 +55,8 @@ class EncryptedString(TypeDecorator):
         """
         if value is not None:
             try:
+                # Import here to avoid circular dependency
+                from app.services.encryption_service import encryption_service
                 return encryption_service.decrypt(value)
             except Exception as e:
                 logger.error(f"Failed to decrypt value: {e}")
