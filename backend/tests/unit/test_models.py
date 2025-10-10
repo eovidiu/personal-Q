@@ -8,7 +8,6 @@ import uuid
 import sys
 import os
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from app.models.agent import Agent, AgentStatus, AgentType
 from app.models.task import Task, TaskStatus, TaskPriority
@@ -158,7 +157,7 @@ class TestActivityModel:
             status=ActivityStatus.SUCCESS,
             title="Agent Started",
             description="Test agent started successfully",
-            metadata={"test": "data"},
+            activity_metadata={"test": "data"},
         )
 
         test_session.add(activity)

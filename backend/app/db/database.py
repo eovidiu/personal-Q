@@ -6,9 +6,6 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.pool import StaticPool
 import os
-import sys
-
-sys.path.insert(0, "/root/repo/backend")
 
 from config.settings import settings
 

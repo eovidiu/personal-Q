@@ -7,7 +7,6 @@ import uuid
 import sys
 import os
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from app.services.agent_service import AgentService
 from app.schemas.agent import AgentCreate, AgentUpdate, AgentStatusUpdate

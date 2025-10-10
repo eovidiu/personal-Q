@@ -5,9 +5,6 @@ Activity log database model.
 from sqlalchemy import Column, String, Text, DateTime, Enum, JSON, ForeignKey
 from sqlalchemy.sql import func
 import enum
-import sys
-
-sys.path.insert(0, "/root/repo/backend")
 
 from app.db.database import Base
 
@@ -52,7 +49,7 @@ class Activity(Base):
     description = Column(Text, nullable=True)
 
     # Additional context
-    metadata = Column(JSON, default=dict)
+    activity_metadata = Column(JSON, default=dict)
 
     # Timestamps
     created_at = Column(DateTime, default=func.now(), nullable=False, index=True)

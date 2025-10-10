@@ -5,9 +5,6 @@ Microsoft Graph API client for Outlook and OneDrive.
 from msgraph import GraphServiceClient
 from azure.identity import DeviceCodeCredential, ClientSecretCredential
 from typing import List, Dict, Any, Optional
-import sys
-
-sys.path.insert(0, "/root/repo/backend")
 
 
 class MicrosoftGraphClient:

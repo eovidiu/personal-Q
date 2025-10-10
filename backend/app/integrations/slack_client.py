@@ -5,9 +5,6 @@ Slack integration client.
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from typing import List, Dict, Any, Optional
-import sys
-
-sys.path.insert(0, "/root/repo/backend")
 
 
 class SlackClient:

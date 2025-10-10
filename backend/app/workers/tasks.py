@@ -8,7 +8,6 @@ from sqlalchemy import select, delete
 import sys
 import asyncio
 
-sys.path.insert(0, "/root/repo/backend")
 
 from app.workers.celery_app import celery_app
 from app.db.database import AsyncSessionLocal

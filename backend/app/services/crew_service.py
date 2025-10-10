@@ -1,17 +1,27 @@
 """
 CrewAI service for agent orchestration.
+Note: CrewAI is currently disabled due to dependency resolution issues.
+This module provides stub implementations for compatibility.
 """
 
-from crewai import Agent as CrewAgent, Task as CrewTask, Crew, Process
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Dict, Any, Optional
-import sys
-
-sys.path.insert(0, "/root/repo/backend")
 
 from app.models.agent import Agent, AgentType
 from app.services.llm_service import llm_service
 from config.settings import settings
+
+# Try to import CrewAI, but provide stubs if not available
+try:
+    from crewai import Agent as CrewAgent, Task as CrewTask, Crew, Process
+    CREWAI_AVAILABLE = True
+except ImportError:
+    CREWAI_AVAILABLE = False
+    # Provide stub classes for type checking
+    CrewAgent = None
+    CrewTask = None
+    Crew = None
+    Process = None
 
 
 class CrewService:
@@ -70,6 +80,14 @@ class CrewService:
         Returns:
             Task execution result
         """
+        if not CREWAI_AVAILABLE:
+            return {
+                "success": False,
+                "error": "CrewAI is not available. Please install crewai and crewai-tools packages.",
+                "agent_id": agent.id,
+                "task_description": task_description
+            }
+
         # Configure LLM for agent
         # Note: In production, get API key from database settings
         # For now using settings default
@@ -133,6 +151,13 @@ class CrewService:
         Returns:
             Execution result
         """
+        if not CREWAI_AVAILABLE:
+            return {
+                "success": False,
+                "error": "CrewAI is not available. Please install crewai and crewai-tools packages.",
+                "agents": [{"id": a.id, "name": a.name} for a in agents]
+            }
+
         if len(agents) != len(task_descriptions):
             raise ValueError("Number of agents must match number of tasks")
 

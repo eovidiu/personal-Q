@@ -5,9 +5,6 @@ Obsidian vault integration (local file I/O).
 import os
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-import sys
-
-sys.path.insert(0, "/root/repo/backend")
 
 
 class ObsidianClient:

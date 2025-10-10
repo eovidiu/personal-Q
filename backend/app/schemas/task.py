@@ -5,9 +5,6 @@ Pydantic schemas for Task model.
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
 from datetime import datetime
-import sys
-
-sys.path.insert(0, "/root/repo/backend")
 
 from app.models.task import TaskStatus, TaskPriority
 

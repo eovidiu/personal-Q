@@ -5,9 +5,6 @@ Task database model.
 from sqlalchemy import Column, String, Text, DateTime, Enum, JSON, ForeignKey, Integer
 from sqlalchemy.sql import func
 import enum
-import sys
-
-sys.path.insert(0, "/root/repo/backend")
 
 from app.db.database import Base
 

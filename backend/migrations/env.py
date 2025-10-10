@@ -10,7 +10,6 @@ import sys
 import os
 
 # Add backend to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 # Import Base and all models
 from app.db.database import Base

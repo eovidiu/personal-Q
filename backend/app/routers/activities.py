@@ -6,9 +6,6 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import Optional
-import sys
-
-sys.path.insert(0, "/root/repo/backend")
 
 from app.db.database import get_db
 from app.schemas.activity import Activity, ActivityList

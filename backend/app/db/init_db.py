@@ -7,9 +7,7 @@ import uuid
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 import sys
-import os
 
-sys.path.insert(0, "/root/repo/backend")
 
 from app.db.database import AsyncSessionLocal, Base, engine
 from app.db.chroma_client import chroma_client

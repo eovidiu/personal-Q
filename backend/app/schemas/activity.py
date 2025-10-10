@@ -5,9 +5,6 @@ Pydantic schemas for Activity model.
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
 from datetime import datetime
-import sys
-
-sys.path.insert(0, "/root/repo/backend")
 
 from app.models.activity import ActivityType, ActivityStatus
 
@@ -18,7 +15,7 @@ class ActivityBase(BaseModel):
     status: ActivityStatus = ActivityStatus.INFO
     title: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    activity_metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
 class ActivityCreate(ActivityBase):

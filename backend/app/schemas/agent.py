@@ -5,9 +5,6 @@ Pydantic schemas for Agent model.
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-import sys
-
-sys.path.insert(0, "/root/repo/backend")
 
 from app.models.agent import AgentStatus, AgentType
 

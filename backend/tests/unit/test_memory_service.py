@@ -7,7 +7,6 @@ from unittest.mock import Mock, AsyncMock, patch
 import sys
 import os
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from app.services.memory_service import MemoryService
 

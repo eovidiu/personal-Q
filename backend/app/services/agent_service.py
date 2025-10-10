@@ -7,9 +7,6 @@ from sqlalchemy import select, func, or_
 from typing import Optional, List
 import uuid
 from datetime import datetime
-import sys
-
-sys.path.insert(0, "/root/repo/backend")
 
 from app.models.agent import Agent, AgentStatus, AgentType
 from app.models.activity import Activity, ActivityType, ActivityStatus

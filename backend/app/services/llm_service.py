@@ -4,9 +4,6 @@ LLM service for Claude integration.
 
 from anthropic import Anthropic, AsyncAnthropic
 from typing import Optional, Dict, Any, AsyncIterator
-import sys
-
-sys.path.insert(0, "/root/repo/backend")
 
 from config.settings import settings
 

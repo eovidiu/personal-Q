@@ -5,9 +5,6 @@ Agent API endpoints.
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List
-import sys
-
-sys.path.insert(0, "/root/repo/backend")
 
 from app.db.database import get_db
 from app.schemas.agent import AgentCreate, AgentUpdate, AgentStatusUpdate, Agent, AgentList

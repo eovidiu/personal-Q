@@ -6,7 +6,6 @@ import pytest
 import sys
 import os
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from app.db.database import get_db, init_db, close_db
 from app.db.chroma_client import ChromaDBClient, get_chroma_client

@@ -5,9 +5,6 @@ WebSocket endpoints for real-time updates.
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import Dict, Set
 import json
-import sys
-
-sys.path.insert(0, "/root/repo/backend")
 
 router = APIRouter()
 

@@ -6,9 +6,6 @@ from sqlalchemy import Column, String, Text, Float, Integer, DateTime, Enum, JSO
 from sqlalchemy.sql import func
 from datetime import datetime
 import enum
-import sys
-
-sys.path.insert(0, "/root/repo/backend")
 
 from app.db.database import Base
 

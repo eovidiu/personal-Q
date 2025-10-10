@@ -5,9 +5,7 @@ Celery application configuration.
 from celery import Celery
 from celery.schedules import crontab
 import sys
-import os
 
-sys.path.insert(0, "/root/repo/backend")
 
 from config.settings import settings
 

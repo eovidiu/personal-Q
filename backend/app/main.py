@@ -6,9 +6,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
-import sys
-
-sys.path.insert(0, "/root/repo/backend")
 
 from config.settings import settings
 from app.db.database import init_db, close_db
@@ -79,13 +76,14 @@ async def health_check():
 
 
 # Import and include routers
-from app.routers import agents, tasks, settings, websocket, activities, metrics
+from app.routers import agents, tasks, websocket, activities, metrics
+from app.routers import settings as settings_router
 
 app.include_router(agents.router, prefix=f"{settings.api_prefix}/agents", tags=["agents"])
 app.include_router(tasks.router, prefix=f"{settings.api_prefix}/tasks", tags=["tasks"])
 app.include_router(activities.router, prefix=f"{settings.api_prefix}/activities", tags=["activities"])
 app.include_router(metrics.router, prefix=f"{settings.api_prefix}/metrics", tags=["metrics"])
-app.include_router(settings.router, prefix=f"{settings.api_prefix}/settings", tags=["settings"])
+app.include_router(settings_router.router, prefix=f"{settings.api_prefix}/settings", tags=["settings"])
 app.include_router(websocket.router, prefix="/ws", tags=["websocket"])
 
 

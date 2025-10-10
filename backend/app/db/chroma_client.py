@@ -5,9 +5,6 @@ ChromaDB client configuration and utilities.
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 import os
-import sys
-
-sys.path.insert(0, "/root/repo/backend")
 
 from config.settings import settings
 
@@ -57,10 +54,14 @@ class ChromaDBClient:
         Returns:
             Collection instance
         """
-        return self._client.get_or_create_collection(
-            name=name,
-            metadata=metadata or {}
-        )
+        # ChromaDB requires metadata to be non-empty if provided
+        if metadata:
+            return self._client.get_or_create_collection(
+                name=name,
+                metadata=metadata
+            )
+        else:
+            return self._client.get_or_create_collection(name=name)
 
     def delete_collection(self, name: str):
         """

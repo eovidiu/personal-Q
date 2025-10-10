@@ -5,9 +5,6 @@ Memory service using ChromaDB for context management.
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 import uuid
-import sys
-
-sys.path.insert(0, "/root/repo/backend")
 
 from app.db.chroma_client import get_chroma_client
 from config.settings import settings

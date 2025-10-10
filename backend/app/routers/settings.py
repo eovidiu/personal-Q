@@ -6,9 +6,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import uuid
-import sys
-
-sys.path.insert(0, "/root/repo/backend")
 
 from app.db.database import get_db
 from app.schemas.settings import APIKeyCreate, APIKeyUpdate, APIKeyMasked, ConnectionTestRequest, ConnectionTestResponse

@@ -4,9 +4,6 @@ API key storage model for external integrations.
 
 from sqlalchemy import Column, String, Text, DateTime, Boolean
 from sqlalchemy.sql import func
-import sys
-
-sys.path.insert(0, "/root/repo/backend")
 
 from app.db.database import Base
 

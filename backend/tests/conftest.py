@@ -9,7 +9,6 @@ from sqlalchemy.pool import StaticPool
 import sys
 import os
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from app.db.database import Base
 from app.models import Agent, Task, Activity, APIKey, Schedule
