@@ -14,6 +14,7 @@ from config.settings import settings
 from app.db.database import init_db, close_db
 from app.middleware.rate_limit import limiter
 from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.services.cache_service import cache_service
 
 
 # Configure logging
@@ -33,10 +34,15 @@ async def lifespan(app: FastAPI):
     await init_db()
     logger.info("Database initialized")
 
+    # Initialize cache
+    await cache_service.connect()
+    logger.info("Cache service initialized")
+
     yield
 
     # Cleanup
     logger.info("Shutting down...")
+    await cache_service.close()
     await close_db()
 
 

@@ -12,6 +12,7 @@ from app.models.agent import Agent, AgentStatus, AgentType
 from app.models.activity import Activity, ActivityType, ActivityStatus
 from app.schemas.agent import AgentCreate, AgentUpdate, AgentStatusUpdate
 from app.utils.datetime_utils import utcnow
+from app.services.cache_service import cache_service
 
 
 class AgentService:
@@ -69,11 +70,33 @@ class AgentService:
 
     @staticmethod
     async def get_agent(db: AsyncSession, agent_id: str) -> Optional[Agent]:
-        """Get agent by ID."""
+        """
+        Get agent by ID with caching.
+        
+        Args:
+            db: Database session
+            agent_id: Agent ID
+            
+        Returns:
+            Agent or None if not found
+        """
+        # Try cache first
+        cache_key = f"agent:{agent_id}"
+        cached_agent = await cache_service.get(cache_key)
+        if cached_agent:
+            return cached_agent
+        
+        # Fetch from database
         result = await db.execute(
             select(Agent).where(Agent.id == agent_id)
         )
-        return result.scalar_one_or_none()
+        agent = result.scalar_one_or_none()
+        
+        # Cache for 10 minutes
+        if agent:
+            await cache_service.set(cache_key, agent, ttl=600)
+        
+        return agent
 
     @staticmethod
     async def list_agents(
@@ -193,6 +216,9 @@ class AgentService:
         db.add(activity)
         await db.commit()
 
+        # Invalidate cache
+        await cache_service.delete(f"agent:{agent_id}")
+
         return agent
 
     @staticmethod
@@ -234,6 +260,9 @@ class AgentService:
         db.add(activity)
         await db.commit()
 
+        # Invalidate cache
+        await cache_service.delete(f"agent:{agent_id}")
+
         return agent
 
     @staticmethod
@@ -267,5 +296,8 @@ class AgentService:
 
         await db.delete(agent)
         await db.commit()
+
+        # Invalidate cache
+        await cache_service.delete(f"agent:{agent_id}")
 
         return True
