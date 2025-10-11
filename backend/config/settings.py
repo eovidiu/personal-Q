@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     app_name: str = "Personal-Q AI Agent Manager"
     app_version: str = "1.0.0"
     env: str = "development"
-    debug: bool = True
+    debug: bool = False  # Set via environment variable in development
 
     # API
     api_host: str = "0.0.0.0"
