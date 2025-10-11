@@ -94,3 +94,35 @@ Rationale
 - Rollback capability
 - Team collaboration support
 - Industry standard for SQLAlchemy projects
+
+## 2025-10-11 Decision: Starting work on PR review ordering
+
+Context
+- Need to review open pull requests and advise sequence.
+
+Options Considered
+- Ignore ordering and review ad-hoc
+- Establish explicit priority list
+
+Choice
+- Analyze open PRs and deliver prioritized review plan.
+
+Rationale
+- Provides clear path for code review focus
+- Surfaces missing artifacts before time is spent reviewing
+
+## 2025-10-11 Decision: Start fixing PR #39 gaps
+
+Context
+- CI is red because the settings page PR lacks required React Query dependencies and the shared query client module.
+
+Options Considered
+- Leave fixes for a follow-up PR
+- Patch PR #39 so downstream stacks stabilize
+
+Choice
+- Update `package.json` with the missing TanStack packages and add the `src/lib/query-client.ts` helper.
+
+Rationale
+- Restores build/test parity for the base branch
+- Enables stacked PRs to rebase cleanly
