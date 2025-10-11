@@ -3,36 +3,37 @@ ABOUTME: Main FastAPI application entry point with rate limiting and CORS.
 ABOUTME: Configures all routers, middleware, and lifecycle events.
 """
 
-from fastapi import FastAPI, Request, status
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
-from contextlib import asynccontextmanager
 import logging
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
+from contextlib import asynccontextmanager
 
-from config.settings import settings
-from app.db.database import init_db, close_db
+from app.db.database import close_db, init_db
+from app.exceptions import (
+    AgentNotFoundException,
+    ConfigurationError,
+    IntegrationError,
+    LLMServiceError,
+    TaskNotFoundException,
+)
+from app.middleware.logging_middleware import RequestLoggingMiddleware
 from app.middleware.rate_limit import limiter
 from app.middleware.security_headers import SecurityHeadersMiddleware
-from app.middleware.logging_middleware import RequestLoggingMiddleware, request_id_var
+from app.routers import activities, agents, auth, metrics, tasks, websocket
+from app.routers import settings as settings_router
 from app.services.cache_service import cache_service
 from app.utils.datetime_utils import utcnow
-from app.exceptions import (
-    PersonalQException,
-    AgentNotFoundException,
-    TaskNotFoundException,
-    LLMServiceError,
-    IntegrationError,
-    ConfigurationError
-)
-
+from config.settings import settings
+from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from starlette.middleware.sessions import SessionMiddleware
 
 # Configure logging
 logging.basicConfig(
     level=getattr(logging, settings.log_level),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -66,10 +67,11 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url=f"{settings.api_prefix}/docs",
     redoc_url=f"{settings.api_prefix}/redoc",
-    openapi_url=f"{settings.api_prefix}/openapi.json"
+    openapi_url=f"{settings.api_prefix}/openapi.json",
 )
 
 # Global exception handlers for consistent error responses
+
 
 # Custom application exceptions
 @app.exception_handler(AgentNotFoundException)
@@ -82,8 +84,10 @@ async def agent_not_found_handler(request: Request, exc: AgentNotFoundException)
             "detail": str(exc) or "Agent not found",
             "code": "AGENT_NOT_FOUND",
             "timestamp": utcnow().isoformat(),
-            "request_id": request.state.request_id if hasattr(request.state, "request_id") else None
-        }
+            "request_id": (
+                request.state.request_id if hasattr(request.state, "request_id") else None
+            ),
+        },
     )
 
 
@@ -97,8 +101,10 @@ async def task_not_found_handler(request: Request, exc: TaskNotFoundException):
             "detail": str(exc) or "Task not found",
             "code": "TASK_NOT_FOUND",
             "timestamp": utcnow().isoformat(),
-            "request_id": request.state.request_id if hasattr(request.state, "request_id") else None
-        }
+            "request_id": (
+                request.state.request_id if hasattr(request.state, "request_id") else None
+            ),
+        },
     )
 
 
@@ -113,8 +119,10 @@ async def llm_service_error_handler(request: Request, exc: LLMServiceError):
             "detail": "LLM service is temporarily unavailable",
             "code": "LLM_SERVICE_ERROR",
             "timestamp": utcnow().isoformat(),
-            "request_id": request.state.request_id if hasattr(request.state, "request_id") else None
-        }
+            "request_id": (
+                request.state.request_id if hasattr(request.state, "request_id") else None
+            ),
+        },
     )
 
 
@@ -129,8 +137,10 @@ async def integration_error_handler(request: Request, exc: IntegrationError):
             "detail": "External service integration failed",
             "code": "INTEGRATION_ERROR",
             "timestamp": utcnow().isoformat(),
-            "request_id": request.state.request_id if hasattr(request.state, "request_id") else None
-        }
+            "request_id": (
+                request.state.request_id if hasattr(request.state, "request_id") else None
+            ),
+        },
     )
 
 
@@ -145,8 +155,10 @@ async def configuration_error_handler(request: Request, exc: ConfigurationError)
             "detail": "System configuration is invalid" if not settings.debug else str(exc),
             "code": "CONFIGURATION_ERROR",
             "timestamp": utcnow().isoformat(),
-            "request_id": request.state.request_id if hasattr(request.state, "request_id") else None
-        }
+            "request_id": (
+                request.state.request_id if hasattr(request.state, "request_id") else None
+            ),
+        },
     )
 
 
@@ -156,11 +168,17 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     """Handle validation errors with standard format."""
     errors = []
     for error in exc.errors():
-        errors.append({
-            "code": error["type"].upper(),
-            "message": error["msg"],
-            "field": ".".join(str(loc) for loc in error["loc"][1:]) if len(error["loc"]) > 1 else None
-        })
+        errors.append(
+            {
+                "code": error["type"].upper(),
+                "message": error["msg"],
+                "field": (
+                    ".".join(str(loc) for loc in error["loc"][1:])
+                    if len(error["loc"]) > 1
+                    else None
+                ),
+            }
+        )
 
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -170,8 +188,10 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "code": "VALIDATION_ERROR",
             "errors": errors,
             "timestamp": utcnow().isoformat(),
-            "request_id": request.state.request_id if hasattr(request.state, "request_id") else None
-        }
+            "request_id": (
+                request.state.request_id if hasattr(request.state, "request_id") else None
+            ),
+        },
     )
 
 
@@ -185,8 +205,10 @@ async def value_error_handler(request: Request, exc: ValueError):
             "detail": str(exc),
             "code": "BAD_REQUEST",
             "timestamp": utcnow().isoformat(),
-            "request_id": request.state.request_id if hasattr(request.state, "request_id") else None
-        }
+            "request_id": (
+                request.state.request_id if hasattr(request.state, "request_id") else None
+            ),
+        },
     )
 
 
@@ -201,8 +223,10 @@ async def general_exception_handler(request: Request, exc: Exception):
             "detail": "An unexpected error occurred" if not settings.debug else str(exc),
             "code": "INTERNAL_SERVER_ERROR",
             "timestamp": utcnow().isoformat(),
-            "request_id": request.state.request_id if hasattr(request.state, "request_id") else None
-        }
+            "request_id": (
+                request.state.request_id if hasattr(request.state, "request_id") else None
+            ),
+        },
     )
 
 
@@ -215,6 +239,17 @@ app.add_middleware(RequestLoggingMiddleware)
 
 # Add security headers middleware
 app.add_middleware(SecurityHeadersMiddleware)
+
+# Add session middleware for OAuth (required by authlib)
+# Use JWT_SECRET_KEY for session encryption
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.jwt_secret_key or "your-super-secret-key-change-in-production",
+    session_cookie="personal_q_session",
+    max_age=3600,  # 1 hour
+    same_site="lax",
+    https_only=settings.env == "production",
+)
 
 # Configure CORS
 app.add_middleware(
@@ -229,25 +264,14 @@ app.add_middleware(
 @app.get("/")
 async def root():
     """Root endpoint."""
-    return {
-        "name": settings.app_name,
-        "version": settings.app_version,
-        "status": "running"
-    }
+    return {"name": settings.app_name, "version": settings.app_version, "status": "running"}
 
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {
-        "status": "healthy",
-        "version": settings.app_version
-    }
+    return {"status": "healthy", "version": settings.app_version}
 
-
-# Import and include routers
-from app.routers import agents, tasks, websocket, activities, metrics, auth
-from app.routers import settings as settings_router
 
 # Authentication endpoints (public)
 app.include_router(auth.router, prefix=f"{settings.api_prefix}/auth", tags=["auth"])
@@ -255,17 +279,17 @@ app.include_router(auth.router, prefix=f"{settings.api_prefix}/auth", tags=["aut
 # Protected endpoints
 app.include_router(agents.router, prefix=f"{settings.api_prefix}/agents", tags=["agents"])
 app.include_router(tasks.router, prefix=f"{settings.api_prefix}/tasks", tags=["tasks"])
-app.include_router(activities.router, prefix=f"{settings.api_prefix}/activities", tags=["activities"])
+app.include_router(
+    activities.router, prefix=f"{settings.api_prefix}/activities", tags=["activities"]
+)
 app.include_router(metrics.router, prefix=f"{settings.api_prefix}/metrics", tags=["metrics"])
-app.include_router(settings_router.router, prefix=f"{settings.api_prefix}/settings", tags=["settings"])
+app.include_router(
+    settings_router.router, prefix=f"{settings.api_prefix}/settings", tags=["settings"]
+)
 app.include_router(websocket.router, prefix="/ws", tags=["websocket"])
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        "main:app",
-        host=settings.api_host,
-        port=settings.api_port,
-        reload=settings.debug
-    )
+
+    uvicorn.run("main:app", host=settings.api_host, port=settings.api_port, reload=settings.debug)
