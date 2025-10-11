@@ -48,8 +48,8 @@ limiter = Limiter(
 # Rate limit configurations for different endpoint types
 RATE_LIMITS = {
     # Critical - LLM costs money
-    "task_create": "20/hour",      # Max 20 tasks per hour
-    "task_execute": "50/hour",     # Max 50 executions per hour
+    "task_create": "10/hour",      # Max 10 tasks per hour (reduced for security)
+    "task_execute": "20/hour",     # Max 20 executions per hour (reduced to control costs)
     
     # Moderate - write operations
     "agent_create": "10/minute",   # Max 10 agents per minute
