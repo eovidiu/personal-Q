@@ -138,6 +138,9 @@ export function SettingsPage() {
   }
 
   const hasAPIKeys = apiKeys && apiKeys.length > 0;
+  const isAnyMutationLoading = createOrUpdateMutation.isPending ||
+                                deleteMutation.isPending ||
+                                testConnectionMutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -149,7 +152,7 @@ export function SettingsPage() {
             Manage API keys for external services
           </p>
         </div>
-        <Button onClick={() => setIsAddDialogOpen(true)}>
+        <Button onClick={() => setIsAddDialogOpen(true)} disabled={isAnyMutationLoading}>
           <PlusIcon className="mr-2 h-4 w-4" />
           Add API Key
         </Button>

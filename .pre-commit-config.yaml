@@ -49,7 +49,7 @@ repos:
     rev: 1.7.10
     hooks:
       - id: bandit
-        args: [-r, backend/app, -ll]
+        args: [-ll]
         files: ^backend/
 
   # Import sorting

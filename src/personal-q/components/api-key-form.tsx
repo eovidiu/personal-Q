@@ -106,7 +106,7 @@ export function APIKeyForm({ initialData, onSubmit, onCancel, isLoading }: APIKe
                 <button
                   type="button"
                   onClick={() => toggleFieldVisibility('api_key')}
-                  aria-label={showFields.api_key ? "Hide API key" : "Show API key"}
+                  aria-label={showFields.api_key ? 'Hide API key' : 'Show API key'}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   {showFields.api_key ? (
@@ -139,7 +139,7 @@ export function APIKeyForm({ initialData, onSubmit, onCancel, isLoading }: APIKe
                 <button
                   type="button"
                   onClick={() => toggleFieldVisibility('access_token')}
-                  aria-label={showFields.access_token ? "Hide access token" : "Show access token"}
+                  aria-label={showFields.access_token ? 'Hide access token' : 'Show access token'}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   {showFields.access_token ? (
@@ -170,6 +170,7 @@ export function APIKeyForm({ initialData, onSubmit, onCancel, isLoading }: APIKe
                 <button
                   type="button"
                   onClick={() => toggleFieldVisibility('refresh_token')}
+                  aria-label={showFields.refresh_token ? 'Hide refresh token' : 'Show refresh token'}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   {showFields.refresh_token ? (
@@ -217,6 +218,7 @@ export function APIKeyForm({ initialData, onSubmit, onCancel, isLoading }: APIKe
                 <button
                   type="button"
                   onClick={() => toggleFieldVisibility('client_secret')}
+                  aria-label={showFields.client_secret ? 'Hide client secret' : 'Show client secret'}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   {showFields.client_secret ? (
@@ -261,9 +263,17 @@ export function APIKeyForm({ initialData, onSubmit, onCancel, isLoading }: APIKe
                 {...register('config', {
                   required: 'Vault path is required',
                   pattern: {
-                    value: /^[a-zA-Z0-9_\-\/.:~\\]+$/,
-                    message: 'Invalid path format. Use alphanumeric characters, dashes, underscores, forward slashes, colons, dots, tildes, or backslashes only.'
-                  }
+                    value: /^[a-zA-Z0-9_\-\\/.: ]+$/,
+                    message: 'Invalid path format. Only alphanumeric characters, spaces, and /\\_-.: are allowed',
+                  },
+                  validate: {
+                    noTraversal: (value) => {
+                      if (value && (value.includes('../') || value.includes('..\\') || value === '..')) {
+                        return 'Path traversal patterns are not allowed';
+                      }
+                      return true;
+                    },
+                  },
                 })}
               />
               {errors.config && (

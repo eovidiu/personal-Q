@@ -50,14 +50,32 @@ interface AgentStatsProps {
   activeAgents: number;
   totalTasks: number;
   averageSuccessRate: string | number;
+  trends?: {
+    agents_change: string;
+    tasks_change: string;
+    success_rate_change: string;
+  };
 }
 
 export function AgentStats({
-  totalAgents,
-  activeAgents,
-  totalTasks,
-  averageSuccessRate,
+  totalAgents = 0,
+  activeAgents = 0,
+  totalTasks = 0,
+  averageSuccessRate = 0,
+  trends,
 }: AgentStatsProps) {
+  // Safely calculate percentage with fallback
+  const activePercentage = totalAgents > 0
+    ? ((activeAgents / totalAgents) * 100).toFixed(0)
+    : '0';
+
+  // Parse trend strings to determine if positive/negative
+  const parseTrend = (trendStr?: string) => {
+    if (!trendStr) return undefined;
+    const isPositive = trendStr.startsWith('+');
+    return { value: trendStr, positive: isPositive };
+  };
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <StatCard
@@ -65,22 +83,22 @@ export function AgentStats({
         value={totalAgents}
         description={`${activeAgents} currently active`}
         icon={<BotIcon className="h-4 w-4" />}
-        trend={{ value: "+2 this week", positive: true }}
+        trend={parseTrend(trends?.agents_change)}
       />
 
       <StatCard
         title="Active Agents"
         value={activeAgents}
-        description={`${((activeAgents / totalAgents) * 100).toFixed(0)}% of total`}
+        description={`${activePercentage}% of total`}
         icon={<ActivityIcon className="h-4 w-4" />}
       />
 
       <StatCard
         title="Tasks Completed"
-        value={totalTasks.toLocaleString()}
+        value={typeof totalTasks === 'number' ? totalTasks.toLocaleString() : '0'}
         description="Across all agents"
         icon={<CheckCircle2Icon className="h-4 w-4" />}
-        trend={{ value: "+12.5% from last month", positive: true }}
+        trend={parseTrend(trends?.tasks_change)}
       />
 
       <StatCard
@@ -88,7 +106,7 @@ export function AgentStats({
         value={`${averageSuccessRate}%`}
         description="Overall performance"
         icon={<TrendingUpIcon className="h-4 w-4" />}
-        trend={{ value: "+2.3% from last month", positive: true }}
+        trend={parseTrend(trends?.success_rate_change)}
       />
     </div>
   );
