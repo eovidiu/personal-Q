@@ -87,8 +87,8 @@ export function AgentCard({ agent }: AgentCardProps) {
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <CardTitle className="text-lg truncate">{agent.name}</CardTitle>
+              <CardTitle className="text-lg truncate mb-2">{agent.name}</CardTitle>
+              <div className="mb-2">
                 <Badge
                   variant="outline"
                   className={statusConfig[agent.status].className}
