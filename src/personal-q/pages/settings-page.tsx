@@ -28,7 +28,7 @@ import type { APIKey, APIKeyCreate } from '@/types/settings';
 export function SettingsPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingKey, setEditingKey] = useState<APIKey | null>(null);
-  const [testingService, setTestingService] = useState<string | null>(null);
+  const [testingServices, setTestingServices] = useState<Set<string>>(new Set());
   const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string }>>({});
 
   // Fetch data
@@ -46,8 +46,9 @@ export function SettingsPage() {
       setIsAddDialogOpen(false);
       setEditingKey(null);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast.error('Failed to save API key. Please try again.');
-      console.error('Error saving API key:', error);
+      console.error('Error saving API key:', errorMessage);
     }
   };
 
@@ -56,13 +57,14 @@ export function SettingsPage() {
       await deleteMutation.mutateAsync(serviceName);
       toast.success('API key deleted successfully');
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast.error('Failed to delete API key. Please try again.');
-      console.error('Error deleting API key:', error);
+      console.error('Error deleting API key:', errorMessage);
     }
   };
 
   const handleTestConnection = async (serviceName: string) => {
-    setTestingService(serviceName);
+    setTestingServices(prev => new Set(prev).add(serviceName));
     try {
       const result = await testConnectionMutation.mutateAsync(serviceName);
       setTestResults((prev) => ({ ...prev, [serviceName]: result }));
@@ -73,15 +75,21 @@ export function SettingsPage() {
         toast.error(`Connection to ${serviceName} failed: ${result.message}`);
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast.error('Failed to test connection. Please try again.');
-      console.error('Error testing connection:', error);
+      console.error('Error testing connection:', errorMessage);
     } finally {
-      setTestingService(null);
+      setTestingServices(prev => {
+        const next = new Set(prev);
+        next.delete(serviceName);
+        return next;
+      });
     }
   };
 
   const handleEdit = (apiKey: APIKey) => {
     setEditingKey(apiKey);
+    setTestResults({});  // Clear previous test results
     setIsAddDialogOpen(true);
   };
 
@@ -122,7 +130,7 @@ export function SettingsPage() {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Failed to load API keys. Please check if the backend is running on http://localhost:8000
+            Failed to load API keys. Please check your network connection and try again.
           </AlertDescription>
         </Alert>
       </div>
@@ -130,6 +138,9 @@ export function SettingsPage() {
   }
 
   const hasAPIKeys = apiKeys && apiKeys.length > 0;
+  const isAnyMutationLoading = createOrUpdateMutation.isPending ||
+                                deleteMutation.isPending ||
+                                testConnectionMutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -141,7 +152,7 @@ export function SettingsPage() {
             Manage API keys for external services
           </p>
         </div>
-        <Button onClick={() => setIsAddDialogOpen(true)}>
+        <Button onClick={() => setIsAddDialogOpen(true)} disabled={isAnyMutationLoading}>
           <PlusIcon className="mr-2 h-4 w-4" />
           Add API Key
         </Button>
@@ -157,7 +168,7 @@ export function SettingsPage() {
               onEdit={handleEdit}
               onDelete={handleDelete}
               onTestConnection={handleTestConnection}
-              isTestingConnection={testingService === apiKey.service_name}
+              isTestingConnection={testingServices.has(apiKey.service_name)}
               testConnectionResult={testResults[apiKey.service_name]}
             />
           ))}
