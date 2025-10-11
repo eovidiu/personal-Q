@@ -1,39 +1,60 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { Toaster } from "sonner";
+import { queryClient } from "@/lib/query-client";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { DashboardLayout } from "@/personal-q/layouts/dashboard-layout";
 import { AgentsPage } from "@/personal-q/pages/agents-page";
 import { AgentDetailPage } from "@/personal-q/pages/agent-detail-page";
+import { SettingsPage } from "@/personal-q/pages/settings-page";
 
 export default function AIAgentApp() {
   return (
-    <Router>
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <DashboardLayout>
-              <AgentsPage />
-            </DashboardLayout>
-          }
-        />
+    <QueryClientProvider client={queryClient}>
+      <Router>
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <DashboardLayout>
+                <AgentsPage />
+              </DashboardLayout>
+            }
+          />
 
-        <Route
-          path="/agents"
-          element={
-            <DashboardLayout>
-              <AgentsPage />
-            </DashboardLayout>
-          }
-        />
+          <Route
+            path="/agents"
+            element={
+              <DashboardLayout>
+                <AgentsPage />
+              </DashboardLayout>
+            }
+          />
 
-        <Route
-          path="/agent/:id"
-          element={
-            <DashboardLayout>
-              <AgentDetailPage />
-            </DashboardLayout>
-          }
-        />
-      </Routes>
-    </Router>
+          <Route
+            path="/agent/:id"
+            element={
+              <DashboardLayout>
+                <AgentDetailPage />
+              </DashboardLayout>
+            }
+          />
+
+          <Route
+            path="/settings"
+            element={
+              <ErrorBoundary>
+                <DashboardLayout>
+                  <SettingsPage />
+                </DashboardLayout>
+              </ErrorBoundary>
+            }
+          />
+        </Routes>
+      </Router>
+      <ReactQueryDevtools initialIsOpen={false} />
+      <Toaster position="top-right" richColors />
+    </QueryClientProvider>
   );
 }
