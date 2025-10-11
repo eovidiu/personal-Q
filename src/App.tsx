@@ -3,6 +3,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { Toaster } from "sonner";
 import { queryClient } from "@/lib/query-client";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { DashboardLayout } from "@/personal-q/layouts/dashboard-layout";
 import { AgentsPage } from "@/personal-q/pages/agents-page";
 import { AgentDetailPage } from "@/personal-q/pages/agent-detail-page";
@@ -43,9 +44,11 @@ export default function AIAgentApp() {
           <Route
             path="/settings"
             element={
-              <DashboardLayout>
-                <SettingsPage />
-              </DashboardLayout>
+              <ErrorBoundary>
+                <DashboardLayout>
+                  <SettingsPage />
+                </DashboardLayout>
+              </ErrorBoundary>
             }
           />
         </Routes>
