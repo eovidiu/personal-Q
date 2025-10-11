@@ -23,6 +23,8 @@ services:
     container_name: personal-q-backend
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=sqlite:///./data/personal_q.db
       - CHROMA_DB_PATH=./data/chromadb
@@ -49,6 +51,8 @@ services:
       dockerfile: Dockerfile
     container_name: personal-q-celery-worker
     command: celery -A app.workers.celery_app worker --loglevel=info
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=sqlite:///./data/personal_q.db
       - CHROMA_DB_PATH=./data/chromadb
@@ -69,6 +73,8 @@ services:
       dockerfile: Dockerfile
     container_name: personal-q-celery-beat
     command: celery -A app.workers.celery_app beat --loglevel=info
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=sqlite:///./data/personal_q.db
       - REDIS_URL=redis://redis:6379/0
