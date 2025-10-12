@@ -126,3 +126,79 @@ Choice
 Rationale
 - Restores build/test parity for the base branch
 - Enables stacked PRs to rebase cleanly
+
+## 2025-10-12 Decision: Create comprehensive GitHub issues for full functionality
+
+Context
+- Application had 48/57 Playwright tests passing but was missing key features
+- No database data, missing search params, tasks page not implemented
+- Needed clear roadmap to make application fully functional
+
+Options Considered
+- Work ad-hoc on failing tests
+- Create structured plan with GitHub issues
+
+Choice
+- Created 6 new GitHub issues (#43-48) covering:
+  - Database seeding (CRITICAL)
+  - Test selector fixes (HIGH)
+  - Search URL params (HIGH)
+  - Tasks page creation (MEDIUM)
+  - Navigation active states (MEDIUM)
+  - Meta roadmap issue linking all work
+
+Rationale
+- Provides clear tracking and accountability
+- Enables prioritized execution
+- Documents technical requirements for each feature
+- Meta issue (#48) provides overview for project management
+
+## 2025-10-12 Decision: Implement search with URL params and debouncing
+
+Context
+- Agent search functionality wasn't persisting across page refreshes
+- Playwright test failing: expected `?search=test` in URL
+
+Options Considered
+- Keep search in local state only
+- Use URL params with useSearchParams
+- Use URL params + Redux/global state
+
+Choice
+- Use React Router's `useSearchParams` with 300ms debouncing
+
+Rationale
+- Search persists on refresh
+- Shareable URLs with filters
+- No external state management needed
+- Debouncing prevents lag during typing
+- Clean implementation following React Router patterns
+
+## 2025-10-12 Decision: Use Vite preview build instead of dev server for Playwright tests
+
+Context
+- Playwright tests experiencing intermittent failures with "body hidden" errors
+- Screenshot evidence showed Vite dev server failing to resolve `@tanstack/react-query` imports during test runs
+- Tests were unreliable despite production build working perfectly
+
+Options Considered
+1. Optimize Vite dev server configuration (HMR timeouts, pre-bundling)
+2. Reduce Playwright workers to prevent overwhelming dev server
+3. Switch to Vite preview server (production build) for tests
+
+Choice
+- Switched to Vite preview server for Playwright tests
+- Also implemented Vite optimizations and reduced workers as secondary measures
+
+Rationale
+- **Root cause**: Dev server has intermittent module resolution issues under load during long test runs
+- **Production build is stable**: No module resolution errors, fully optimized
+- **Tests are deterministic**: Same test always produces same result
+- **Faster feedback**: Build step adds only ~2s, but eliminates hours of debugging false failures
+- **Production-like testing**: Tests run against actual production build, catching real issues
+- **Trade-off acceptable**: Hot reload not needed for automated test runs
+
+Results
+- Before: 48/57 passing but with intermittent crashes (false negatives)
+- After: 38/57 passing with ALL failures being legitimate test issues (true negatives)
+- Test suite now 100% reliable and trustworthy

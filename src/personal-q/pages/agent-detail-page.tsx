@@ -19,7 +19,13 @@ import {
 } from "@/components/ui/dialog";
 import { AgentForm } from "@/personal-q/components/agent-form";
 import { AgentActivity } from "@/personal-q/components/agent-activity";
-import { agents, recentActivity } from "@/personal-q/data/agents-data";
+import { useAgent } from "@/hooks/useAgent";
+import { useUpdateAgent } from "@/hooks/useUpdateAgent";
+import { useUpdateAgentStatus } from "@/hooks/useUpdateAgentStatus";
+import { useAgentActivities } from "@/hooks/useActivities";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import type { AgentStatusUpdate } from "@/types/agent";
 import {
   ArrowLeftIcon,
   PlayIcon,
@@ -31,6 +37,8 @@ import {
   ActivityIcon,
   BrainIcon,
   TagIcon,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
@@ -57,10 +65,72 @@ const statusConfig = {
 };
 
 export function AgentDetailPage() {
-  const { id = "1" } = useParams();
-  const agent = agents.find((a) => a.id === id) || agents[0];
-  const agentActivities = recentActivity.filter((a) => a.agentId === agent.id);
+  const { id } = useParams();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  // Fetch agent data and activities
+  const { data: agent, isLoading, error } = useAgent(id);
+  const { data: activitiesData, isLoading: activitiesLoading } = useAgentActivities(id);
+
+  // Mutations
+  const updateAgentMutation = useUpdateAgent(id || '');
+  const updateStatusMutation = useUpdateAgentStatus(id || '');
+
+  // Handle status toggle
+  const handleStatusToggle = async () => {
+    if (!agent) return;
+
+    const newStatus: AgentStatusUpdate = {
+      status: agent.status === 'active' ? 'inactive' : 'active'
+    };
+
+    try {
+      await updateStatusMutation.mutateAsync(newStatus);
+    } catch (error) {
+      console.error('Failed to update status:', error);
+    }
+  };
+
+  // Handle configuration update
+  const handleConfigUpdate = async (data: any) => {
+    try {
+      await updateAgentMutation.mutateAsync(data);
+      setIsEditDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to update agent:', error);
+    }
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !agent) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Failed to load agent details. Agent may not exist or backend is unavailable.
+        </AlertDescription>
+        <Link to="/agents">
+          <Button variant="outline" size="sm" className="mt-4">
+            <ArrowLeftIcon className="h-4 w-4 mr-2" />
+            Back to Agents
+          </Button>
+        </Link>
+      </Alert>
+    );
+  }
+
+  const agentActivities = activitiesData?.activities || [];
 
   return (
     <div className="space-y-6">
@@ -76,8 +146,7 @@ export function AgentDetailPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-start gap-4">
           <Avatar className="h-16 w-16">
-            <AvatarImage src={agent.avatar} alt={agent.name} />
-
+            <AvatarImage src={agent.avatar_url} alt={agent.name} />
             <AvatarFallback>
               {agent.name.substring(0, 2).toUpperCase()}
             </AvatarFallback>
@@ -102,22 +171,24 @@ export function AgentDetailPage() {
             variant="outline"
             size="sm"
             onClick={() => setIsEditDialogOpen(true)}
+            disabled={updateAgentMutation.isPending}
           >
             <SettingsIcon className="h-4 w-4 mr-2" />
             Configure
           </Button>
-          <Button size="sm">
-            {agent.status === "active" ? (
-              <>
-                <PauseIcon className="h-4 w-4 mr-2" />
-                Pause
-              </>
+          <Button
+            size="sm"
+            onClick={handleStatusToggle}
+            disabled={updateStatusMutation.isPending}
+          >
+            {updateStatusMutation.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : agent.status === "active" ? (
+              <PauseIcon className="h-4 w-4 mr-2" />
             ) : (
-              <>
-                <PlayIcon className="h-4 w-4 mr-2" />
-                Activate
-              </>
+              <PlayIcon className="h-4 w-4 mr-2" />
             )}
+            {agent.status === "active" ? "Pause" : "Activate"}
           </Button>
         </div>
       </div>
@@ -133,9 +204,11 @@ export function AgentDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {agent.tasksCompleted.toLocaleString()}
+              {agent.tasks_completed.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">+180 this week</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {agent.tasks_failed} failed
+            </p>
           </CardContent>
         </Card>
 
@@ -145,8 +218,8 @@ export function AgentDetailPage() {
             <TrendingUpIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{agent.successRate}%</div>
-            <Progress value={agent.successRate} className="mt-2" />
+            <div className="text-2xl font-bold">{agent.success_rate}%</div>
+            <Progress value={agent.success_rate} className="mt-2" />
           </CardContent>
         </Card>
 
@@ -167,9 +240,11 @@ export function AgentDetailPage() {
             <ClockIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{agent.lastActive}</div>
+            <div className="text-2xl font-bold">
+              {agent.last_active ? new Date(agent.last_active).toLocaleString() : 'Never'}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Created {agent.createdAt}
+              Created {new Date(agent.created_at).toLocaleDateString()}
             </p>
           </CardContent>
         </Card>
@@ -209,7 +284,7 @@ export function AgentDetailPage() {
                   <div>
                     <p className="text-sm text-muted-foreground">Max Tokens</p>
                     <p className="font-medium">
-                      {agent.maxTokens.toLocaleString()}
+                      {agent.max_tokens.toLocaleString()}
                     </p>
                   </div>
                 </div>
@@ -236,7 +311,7 @@ export function AgentDetailPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Created</p>
-                  <p className="font-medium">{agent.createdAt}</p>
+                  <p className="font-medium">{new Date(agent.created_at).toLocaleDateString()}</p>
                 </div>
               </CardContent>
             </Card>
@@ -251,19 +326,18 @@ export function AgentDetailPage() {
             </CardHeader>
             <CardContent>
               <div className="bg-muted p-4 rounded-lg">
-                <p className="text-sm font-mono">{agent.systemPrompt}</p>
+                <p className="text-sm font-mono">{agent.system_prompt}</p>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="activity">
-          <AgentActivity
-            activities={
-              agentActivities.length > 0 ? agentActivities : recentActivity
-            }
-            maxHeight="600px"
-          />
+          {activitiesLoading ? (
+            <Skeleton className="h-64 w-full" />
+          ) : (
+            <AgentActivity activities={agentActivities} maxHeight="600px" />
+          )}
         </TabsContent>
 
         <TabsContent value="performance">
@@ -280,10 +354,10 @@ export function AgentDetailPage() {
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm font-medium">Task Success Rate</p>
                     <p className="text-sm text-muted-foreground">
-                      {agent.successRate}%
+                      {agent.success_rate}%
                     </p>
                   </div>
-                  <Progress value={agent.successRate} />
+                  <Progress value={agent.success_rate} />
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-2">
@@ -297,8 +371,8 @@ export function AgentDetailPage() {
                 <div className="pt-4 border-t border-border">
                   <p className="text-sm text-muted-foreground">
                     This agent has completed{" "}
-                    {agent.tasksCompleted.toLocaleString()} tasks with an
-                    average success rate of {agent.successRate}%. Performance
+                    {agent.tasks_completed.toLocaleString()} tasks with an
+                    average success rate of {agent.success_rate}%. Performance
                     metrics are updated in real-time.
                   </p>
                 </div>
@@ -316,10 +390,7 @@ export function AgentDetailPage() {
           </DialogHeader>
           <AgentForm
             agent={agent}
-            onSubmit={(data) => {
-              console.log("Updating agent:", data);
-              setIsEditDialogOpen(false);
-            }}
+            onSubmit={handleConfigUpdate}
             onCancel={() => setIsEditDialogOpen(false)}
           />
         </DialogContent>
