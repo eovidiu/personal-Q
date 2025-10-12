@@ -24,6 +24,13 @@ RUN pip install --no-cache-dir -e .
 # Create data directories
 RUN mkdir -p /app/data /app/data/chromadb
 
+# Create non-root user for security
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
 # Set Python path (backup measure)
 ENV PYTHONPATH=/app
 

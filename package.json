@@ -101,7 +101,7 @@
     "react-plotly.js": "latest",
     "react-resizable-panels": "latest",
     "react-router-dom": "latest",
-    "react-syntax-highlighter": "^5.8.0",
+    "react-syntax-highlighter": "^15.6.6",
     "react-type-animation": "latest",
     "reactflow": "latest",
     "recharts": "^2.15.1",
@@ -112,7 +112,7 @@
     "three": "^0.167.1",
     "tsparticles": "^3.5.0",
     "vaul": "^1.1.2",
-    "xlsx": "^0.18.5",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "yup": "^1.4.0",
     "zod": "^3.23.8"
   },
