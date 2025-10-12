@@ -4,6 +4,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { Toaster } from "sonner";
 import { queryClient } from "@/lib/query-client";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { WebSocketProvider } from "@/contexts/WebSocketContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { DashboardLayout } from "@/personal-q/layouts/dashboard-layout";
@@ -17,9 +18,10 @@ export default function AIAgentApp() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
+        <WebSocketProvider>
+          <Router>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
 
             <Route
               path="/"
@@ -77,10 +79,11 @@ export default function AIAgentApp() {
                 </ProtectedRoute>
               }
             />
-          </Routes>
-        </Router>
-        <ReactQueryDevtools initialIsOpen={false} />
-        <Toaster position="top-right" richColors />
+            </Routes>
+          </Router>
+          <ReactQueryDevtools initialIsOpen={false} />
+          <Toaster position="top-right" richColors />
+        </WebSocketProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

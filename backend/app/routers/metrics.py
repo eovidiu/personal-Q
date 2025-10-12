@@ -2,26 +2,24 @@
 Metrics and statistics API endpoints.
 """
 
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
-from datetime import datetime, timedelta
 from typing import Dict
 
 from app.db.database import get_db
+from app.dependencies.auth import get_current_user
 from app.models.agent import Agent, AgentStatus
 from app.models.task import Task, TaskStatus
 from app.services.memory_service import get_memory_service
-from app.utils.datetime_utils import utcnow
-from app.dependencies.auth import get_current_user
+from app.services.trend_calculator import TrendCalculator
+from fastapi import APIRouter, Depends
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 
 
 @router.get("/dashboard")
 async def get_dashboard_metrics(
-    db: AsyncSession = Depends(get_db),
-    current_user: Dict = Depends(get_current_user)
+    db: AsyncSession = Depends(get_db), current_user: Dict = Depends(get_current_user)
 ):
     """Get dashboard statistics (requires authentication)."""
     # Total agents
@@ -50,15 +48,11 @@ async def get_dashboard_metrics(
 
     avg_success_rate = (total_completed / total_all * 100) if total_all > 0 else 0
 
-    # Weekly trend (mock for now)
-    one_week_ago = utcnow() - timedelta(days=7)
-    weekly_tasks_result = await db.execute(
-        select(func.count(Task.id)).where(
-            Task.created_at >= one_week_ago,
-            Task.status == TaskStatus.COMPLETED
-        )
-    )
-    weekly_tasks = weekly_tasks_result.scalar()
+    # Calculate real trends
+    trend_calculator = TrendCalculator()
+    agents_trend = await trend_calculator.calculate_agent_trend(db)
+    tasks_trend = await trend_calculator.calculate_tasks_trend(db)
+    success_rate_trend = await trend_calculator.calculate_success_rate_trend(db)
 
     return {
         "total_agents": total_agents,
@@ -66,10 +60,10 @@ async def get_dashboard_metrics(
         "tasks_completed": tasks_completed,
         "avg_success_rate": round(avg_success_rate, 1),
         "trends": {
-            "agents_change": "+2 this week",  # Mock
-            "tasks_change": f"+{weekly_tasks} from last month",
-            "success_rate_change": "+2.3% from last month"  # Mock
-        }
+            "agents_change": agents_trend,
+            "tasks_change": tasks_trend,
+            "success_rate_change": success_rate_trend,
+        },
     }
 
 
@@ -77,7 +71,7 @@ async def get_dashboard_metrics(
 async def get_agent_metrics(
     agent_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: Dict = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user),
 ):
     """Get metrics for specific agent (requires authentication)."""
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
@@ -89,16 +83,14 @@ async def get_agent_metrics(
     # Get task breakdown
     pending_result = await db.execute(
         select(func.count(Task.id)).where(
-            Task.agent_id == agent_id,
-            Task.status == TaskStatus.PENDING
+            Task.agent_id == agent_id, Task.status == TaskStatus.PENDING
         )
     )
     pending_tasks = pending_result.scalar()
 
     running_result = await db.execute(
         select(func.count(Task.id)).where(
-            Task.agent_id == agent_id,
-            Task.status == TaskStatus.RUNNING
+            Task.agent_id == agent_id, Task.status == TaskStatus.RUNNING
         )
     )
     running_tasks = running_result.scalar()
@@ -113,7 +105,7 @@ async def get_agent_metrics(
         "last_active": agent.last_active,
         "pending_tasks": pending_tasks,
         "running_tasks": running_tasks,
-        "status": agent.status.value
+        "status": agent.status.value,
     }
 
 
@@ -123,7 +115,4 @@ async def get_memory_statistics(current_user: Dict = Depends(get_current_user)):
     memory_service = get_memory_service()
     stats = await memory_service.get_statistics()
 
-    return {
-        "memory_statistics": stats,
-        "storage_type": "ChromaDB (embedded)"
-    }
+    return {"memory_statistics": stats, "storage_type": "ChromaDB (embedded)"}
