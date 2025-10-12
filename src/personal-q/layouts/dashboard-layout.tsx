@@ -5,6 +5,7 @@ import {
   LayoutDashboardIcon,
   SettingsIcon,
   BellIcon,
+  ListTodoIcon,
 } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -50,6 +51,16 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 >
                   <BotIcon className="h-4 w-4" />
                   Agents
+                </Button>
+              </Link>
+              <Link to="/tasks">
+                <Button
+                  variant={isActive("/tasks") ? "secondary" : "ghost"}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <ListTodoIcon className="h-4 w-4" />
+                  Tasks
                 </Button>
               </Link>
             </nav>

@@ -1,0 +1,131 @@
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CheckCircle2Icon, ClockIcon, XCircleIcon, PlayCircleIcon, Loader2Icon, BanIcon } from "lucide-react";
+import type { Task } from "@/types/task";
+
+interface TaskCardProps {
+  task: Task;
+}
+
+const statusConfig = {
+  pending: {
+    label: "Pending",
+    className: "bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20",
+    icon: ClockIcon,
+  },
+  running: {
+    label: "Running",
+    className: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+    icon: PlayCircleIcon,
+  },
+  completed: {
+    label: "Completed",
+    className: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
+    icon: CheckCircle2Icon,
+  },
+  failed: {
+    label: "Failed",
+    className: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
+    icon: XCircleIcon,
+  },
+  cancelled: {
+    label: "Cancelled",
+    className: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
+    icon: BanIcon,
+  },
+};
+
+const priorityConfig = {
+  low: {
+    label: "Low",
+    className: "bg-slate-500/10 text-slate-600 dark:text-slate-400",
+  },
+  medium: {
+    label: "Medium",
+    className: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  },
+  high: {
+    label: "High",
+    className: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+  },
+  urgent: {
+    label: "Urgent",
+    className: "bg-red-500/10 text-red-600 dark:text-red-400",
+  },
+};
+
+export function TaskCard({ task }: TaskCardProps) {
+  const StatusIcon = statusConfig[task.status].icon;
+
+  return (
+    <Card className="hover:shadow-lg transition-shadow">
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <StatusIcon className="h-4 w-4 flex-shrink-0" />
+              <CardTitle className="text-lg truncate">{task.title}</CardTitle>
+            </div>
+            {task.description && (
+              <CardDescription className="line-clamp-2">{task.description}</CardDescription>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant="outline" className={statusConfig[task.status].className}>
+            {statusConfig[task.status].label}
+          </Badge>
+          <Badge variant="secondary" className={priorityConfig[task.priority].className}>
+            {priorityConfig[task.priority].label}
+          </Badge>
+        </div>
+
+        {task.error_message && (
+          <div className="p-2 rounded bg-destructive/10 text-destructive text-sm">
+            <p className="font-medium">Error:</p>
+            <p className="line-clamp-2">{task.error_message}</p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-4 pt-2">
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Created</p>
+            <p className="text-sm font-medium">
+              {new Date(task.created_at).toLocaleDateString()}
+            </p>
+          </div>
+          {task.completed_at && (
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Completed</p>
+              <p className="text-sm font-medium">
+                {new Date(task.completed_at).toLocaleDateString()}
+              </p>
+            </div>
+          )}
+          {task.execution_time_seconds !== undefined && (
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Duration</p>
+              <p className="text-sm font-medium">{task.execution_time_seconds.toFixed(2)}s</p>
+            </div>
+          )}
+          {task.retry_count > 0 && (
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Retries</p>
+              <p className="text-sm font-medium">{task.retry_count}</p>
+            </div>
+          )}
+        </div>
+
+        {task.status === 'running' && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2 border-t border-border">
+            <Loader2Icon className="h-3 w-3 animate-spin" />
+            <span>Task in progress...</span>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
