@@ -8,8 +8,7 @@ import type { Task, TaskCreate } from '../types/task';
 import type { Activity } from '../types/activity';
 import type { DashboardMetrics, AgentMetrics } from '../types/metrics';
 import type { APIKey, APIKeyCreate } from '../types/settings';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { TOKEN_STORAGE_KEY, API_BASE_URL } from '@/constants/auth';
 
 class APIClient {
   private client: AxiosInstance;
@@ -26,7 +25,7 @@ class APIClient {
     // Request interceptor - add auth token
     this.client.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem('personal_q_token');
+        const token = localStorage.getItem(TOKEN_STORAGE_KEY);
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -37,10 +36,19 @@ class APIClient {
       }
     );
 
-    // Response interceptor
+    // Response interceptor - handle errors and 401 unauthorized
     this.client.interceptors.response.use(
       (response) => response,
       (error: AxiosError) => {
+        // Handle 401 Unauthorized - token expired or invalid
+        if (error.response?.status === 401) {
+          console.warn('Unauthorized: Token expired or invalid. Redirecting to login...');
+          // Clear token
+          localStorage.removeItem(TOKEN_STORAGE_KEY);
+          // Redirect to login page
+          window.location.href = '/login';
+        }
+
         console.error('API Error:', error.response?.data || error.message);
         return Promise.reject(error);
       }

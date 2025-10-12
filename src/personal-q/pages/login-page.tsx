@@ -2,30 +2,31 @@ import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BotIcon } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { BotIcon, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function LoginPage() {
-  const { login, setToken, isAuthenticated, isLoading } = useAuth();
+  const { login, setToken, isAuthenticated, isLoading, error, clearError } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if token is in URL (OAuth callback)
+    // Handle OAuth callback token
     const tokenFromUrl = searchParams.get('token');
     if (tokenFromUrl) {
-      setToken(tokenFromUrl);
-      // Remove token from URL for security
-      navigate('/', { replace: true });
+      setToken(tokenFromUrl).then(() => {
+        // Remove token from URL for security
+        navigate('/', { replace: true });
+      });
+      return;
     }
-  }, [searchParams, setToken, navigate]);
 
-  useEffect(() => {
     // Redirect if already authenticated
-    if (isAuthenticated && !isLoading) {
+    if (!isLoading && isAuthenticated) {
       navigate('/', { replace: true });
     }
-  }, [isAuthenticated, isLoading, navigate]);
+  }, [searchParams, setToken, isAuthenticated, isLoading, navigate]);
 
   if (isLoading) {
     return (
@@ -55,6 +56,23 @@ export function LoginPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="ml-2">
+                {error}
+              </AlertDescription>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                onClick={clearError}
+              >
+                Dismiss
+              </Button>
+            </Alert>
+          )}
+
           <Button
             onClick={login}
             className="w-full"
