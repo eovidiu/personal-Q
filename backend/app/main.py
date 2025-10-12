@@ -242,9 +242,13 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 # Add session middleware for OAuth (required by authlib)
 # Use JWT_SECRET_KEY for session encryption
+# Require JWT_SECRET_KEY in production for security
+if settings.env == "production" and not settings.jwt_secret_key:
+    raise ValueError("JWT_SECRET_KEY environment variable must be set in production")
+
 app.add_middleware(
     SessionMiddleware,
-    secret_key=settings.jwt_secret_key or "your-super-secret-key-change-in-production",
+    secret_key=settings.jwt_secret_key or "dev-secret-key-for-local-only",
     session_cookie="personal_q_session",
     max_age=3600,  # 1 hour
     same_site="lax",
