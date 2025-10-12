@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,9 +19,45 @@ interface AgentListProps {
 }
 
 export function AgentList({ agents, onCreateNew }: AgentListProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<AgentStatus | "all">("all");
-  const [typeFilter, setTypeFilter] = useState<AgentType | "all">("all");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Get values from URL params or use defaults
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
+  const [statusFilter, setStatusFilter] = useState<AgentStatus | "all">(
+    (searchParams.get("status") as AgentStatus) || "all"
+  );
+  const [typeFilter, setTypeFilter] = useState<AgentType | "all">(
+    (searchParams.get("type") as AgentType) || "all"
+  );
+
+  // Debounce search query updates to URL
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams(searchParams);
+
+      if (searchQuery) {
+        params.set("search", searchQuery);
+      } else {
+        params.delete("search");
+      }
+
+      if (statusFilter !== "all") {
+        params.set("status", statusFilter);
+      } else {
+        params.delete("status");
+      }
+
+      if (typeFilter !== "all") {
+        params.set("type", typeFilter);
+      } else {
+        params.delete("type");
+      }
+
+      setSearchParams(params, { replace: true });
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, statusFilter, typeFilter, searchParams, setSearchParams]);
 
   const filteredAgents = agents.filter((agent) => {
     const matchesSearch =
@@ -113,6 +150,7 @@ export function AgentList({ agents, onCreateNew }: AgentListProps) {
               setSearchQuery("");
               setStatusFilter("all");
               setTypeFilter("all");
+              setSearchParams({}, { replace: true }); // Clear URL params
             }}
           >
             Clear Filters
