@@ -9,6 +9,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { DashboardLayout } from "@/personal-q/layouts/dashboard-layout";
 import { AgentsPage } from "@/personal-q/pages/agents-page";
 import { AgentDetailPage } from "@/personal-q/pages/agent-detail-page";
+import { TasksPage } from "@/personal-q/pages/tasks-page";
 import { SettingsPage } from "@/personal-q/pages/settings-page";
 import { LoginPage } from "@/personal-q/pages/login-page";
 
@@ -48,6 +49,17 @@ export default function AIAgentApp() {
                 <ProtectedRoute>
                   <DashboardLayout>
                     <AgentDetailPage />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/tasks"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <TasksPage />
                   </DashboardLayout>
                 </ProtectedRoute>
               }
