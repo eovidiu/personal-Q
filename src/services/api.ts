@@ -23,9 +23,13 @@ class APIClient {
       },
     });
 
-    // Request interceptor
+    // Request interceptor - add auth token
     this.client.interceptors.request.use(
       (config) => {
+        const token = localStorage.getItem('personal_q_token');
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
         return config;
       },
       (error) => {
