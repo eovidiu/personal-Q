@@ -14,7 +14,7 @@ class MicrosoftGraphClient:
         self,
         client_id: Optional[str] = None,
         client_secret: Optional[str] = None,
-        tenant_id: Optional[str] = None
+        tenant_id: Optional[str] = None,
     ):
         """
         Initialize Microsoft Graph client.
@@ -44,9 +44,7 @@ class MicrosoftGraphClient:
 
         if self._client is None:
             credential = ClientSecretCredential(
-                tenant_id=self.tenant_id,
-                client_id=self.client_id,
-                client_secret=self.client_secret
+                tenant_id=self.tenant_id, client_id=self.client_id, client_secret=self.client_secret
             )
             self._client = GraphServiceClient(credentials=credential)
 
@@ -54,10 +52,7 @@ class MicrosoftGraphClient:
 
     # Outlook/Email methods
     async def read_emails(
-        self,
-        folder: str = "inbox",
-        limit: int = 10,
-        unread_only: bool = False
+        self, folder: str = "inbox", limit: int = 10, unread_only: bool = False
     ) -> Dict[str, Any]:
         """
         Read emails from mailbox.
@@ -71,10 +66,7 @@ class MicrosoftGraphClient:
             List of emails
         """
         try:
-            query_params = {
-                "$top": limit,
-                "$orderby": "receivedDateTime DESC"
-            }
+            query_params = {"$top": limit, "$orderby": "receivedDateTime DESC"}
 
             if unread_only:
                 query_params["$filter"] = "isRead eq false"
@@ -87,26 +79,21 @@ class MicrosoftGraphClient:
                     {
                         "id": msg.id,
                         "subject": msg.subject,
-                        "from": msg.from_address.email_address.address if msg.from_address else None,
+                        "from": (
+                            msg.from_address.email_address.address if msg.from_address else None
+                        ),
                         "body": msg.body.content if msg.body else "",
                         "received": msg.received_date_time,
-                        "is_read": msg.is_read
+                        "is_read": msg.is_read,
                     }
                     for msg in messages.value
-                ]
+                ],
             }
         except Exception as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            return {"success": False, "error": str(e)}
 
     async def send_email(
-        self,
-        to: str,
-        subject: str,
-        body: str,
-        body_type: str = "text"
+        self, to: str, subject: str, body: str, body_type: str = "text"
     ) -> Dict[str, Any]:
         """
         Send email.
@@ -123,33 +110,19 @@ class MicrosoftGraphClient:
         try:
             message = {
                 "subject": subject,
-                "body": {
-                    "contentType": body_type,
-                    "content": body
-                },
-                "toRecipients": [
-                    {
-                        "emailAddress": {
-                            "address": to
-                        }
-                    }
-                ]
+                "body": {"contentType": body_type, "content": body},
+                "toRecipients": [{"emailAddress": {"address": to}}],
             }
 
             await self.client.me.send_mail(message)
 
             return {"success": True}
         except Exception as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            return {"success": False, "error": str(e)}
 
     # Calendar methods
     async def get_calendar_events(
-        self,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None
+        self, start_date: Optional[str] = None, end_date: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Get calendar events.
@@ -179,23 +152,16 @@ class MicrosoftGraphClient:
                         "subject": event.subject,
                         "start": event.start.date_time if event.start else None,
                         "end": event.end.date_time if event.end else None,
-                        "location": event.location.display_name if event.location else None
+                        "location": event.location.display_name if event.location else None,
                     }
                     for event in events.value
-                ]
+                ],
             }
         except Exception as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            return {"success": False, "error": str(e)}
 
     async def create_calendar_event(
-        self,
-        subject: str,
-        start: str,
-        end: str,
-        body: Optional[str] = None
+        self, subject: str, start: str, end: str, body: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Create calendar event.
@@ -214,26 +180,17 @@ class MicrosoftGraphClient:
                 "subject": subject,
                 "start": {"dateTime": start, "timeZone": "UTC"},
                 "end": {"dateTime": end, "timeZone": "UTC"},
-                "body": {"contentType": "text", "content": body or ""}
+                "body": {"contentType": "text", "content": body or ""},
             }
 
             created = await self.client.me.calendar.events.post(event)
 
-            return {
-                "success": True,
-                "event_id": created.id
-            }
+            return {"success": True, "event_id": created.id}
         except Exception as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            return {"success": False, "error": str(e)}
 
     # OneDrive methods
-    async def list_files(
-        self,
-        folder_path: str = "root"
-    ) -> Dict[str, Any]:
+    async def list_files(self, folder_path: str = "root") -> Dict[str, Any]:
         """
         List files in OneDrive folder.
 
@@ -257,21 +214,15 @@ class MicrosoftGraphClient:
                         "name": item.name,
                         "size": item.size,
                         "modified": item.last_modified_date_time,
-                        "is_folder": item.folder is not None
+                        "is_folder": item.folder is not None,
                     }
                     for item in items.value
-                ]
+                ],
             }
         except Exception as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            return {"success": False, "error": str(e)}
 
-    async def read_file(
-        self,
-        file_path: str
-    ) -> Dict[str, Any]:
+    async def read_file(self, file_path: str) -> Dict[str, Any]:
         """
         Read file content from OneDrive.
 
@@ -284,21 +235,11 @@ class MicrosoftGraphClient:
         try:
             content = await self.client.me.drive.root.item_with_path(file_path).content.get()
 
-            return {
-                "success": True,
-                "content": content.decode("utf-8")
-            }
+            return {"success": True, "content": content.decode("utf-8")}
         except Exception as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            return {"success": False, "error": str(e)}
 
-    async def write_file(
-        self,
-        file_path: str,
-        content: str
-    ) -> Dict[str, Any]:
+    async def write_file(self, file_path: str, content: str) -> Dict[str, Any]:
         """
         Write file to OneDrive.
 
@@ -316,16 +257,10 @@ class MicrosoftGraphClient:
 
             return {"success": True}
         except Exception as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            return {"success": False, "error": str(e)}
 
     async def validate_credentials(
-        self,
-        client_id: str,
-        client_secret: str,
-        tenant_id: str
+        self, client_id: str, client_secret: str, tenant_id: str
     ) -> bool:
         """
         Validate Microsoft Graph credentials.
@@ -340,9 +275,7 @@ class MicrosoftGraphClient:
         """
         try:
             credential = ClientSecretCredential(
-                tenant_id=tenant_id,
-                client_id=client_id,
-                client_secret=client_secret
+                tenant_id=tenant_id, client_id=client_id, client_secret=client_secret
             )
             client = GraphServiceClient(credentials=credential)
             await client.me.get()

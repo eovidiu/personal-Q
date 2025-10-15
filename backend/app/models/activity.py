@@ -12,6 +12,7 @@ from app.db.database import Base
 
 class ActivityType(str, enum.Enum):
     """Activity type enum."""
+
     AGENT_CREATED = "agent_created"
     AGENT_UPDATED = "agent_updated"
     AGENT_DELETED = "agent_deleted"
@@ -28,6 +29,7 @@ class ActivityType(str, enum.Enum):
 
 class ActivityStatus(str, enum.Enum):
     """Activity status/outcome."""
+
     SUCCESS = "success"
     ERROR = "error"
     INFO = "info"
@@ -40,7 +42,9 @@ class Activity(Base):
     __tablename__ = "activities"
 
     id = Column(String, primary_key=True, index=True)
-    agent_id = Column(String, ForeignKey("agents.id", ondelete="SET NULL"), nullable=True, index=True)
+    agent_id = Column(
+        String, ForeignKey("agents.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     task_id = Column(String, ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, index=True)
 
     # Activity details

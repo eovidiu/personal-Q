@@ -34,7 +34,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         # Process request
         try:
             response = await call_next(request)
-            
+
             # Calculate duration
             duration_ms = round((time.time() - start_time) * 1000, 2)
 
@@ -49,7 +49,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 log_level,
                 f"Request completed: {request.method} {request.url.path} "
                 f"status={response.status_code} duration={duration_ms}ms "
-                f"request_id={request_id}"
+                f"request_id={request_id}",
             )
 
             # Add request ID to response headers for debugging
@@ -63,7 +63,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             logger.error(
                 f"Request failed: {request.method} {request.url.path} "
                 f"error={str(e)} duration={duration_ms}ms request_id={request_id}",
-                exc_info=True
+                exc_info=True,
             )
             raise
 
@@ -72,12 +72,7 @@ class PerformanceLogger:
     """Helper for logging performance metrics."""
 
     @staticmethod
-    def log_operation(
-        operation: str,
-        duration_ms: float,
-        success: bool = True,
-        **kwargs
-    ):
+    def log_operation(operation: str, duration_ms: float, success: bool = True, **kwargs):
         """
         Log an operation with timing information.
 
@@ -90,9 +85,7 @@ class PerformanceLogger:
         context = " ".join(f"{k}={v}" for k, v in kwargs.items())
         status = "success" if success else "failed"
 
-        logger.info(
-            f"Operation {operation} {status} in {duration_ms}ms {context}"
-        )
+        logger.info(f"Operation {operation} {status} in {duration_ms}ms {context}")
 
 
 class SecurityLogger:
@@ -151,4 +144,3 @@ class SecurityLogger:
 # Global instances
 performance_logger = PerformanceLogger()
 security_logger = SecurityLogger()
-

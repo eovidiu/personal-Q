@@ -8,21 +8,10 @@ from app.schemas.agent import (
     AgentUpdate,
     AgentStatusUpdate,
     Agent,
-    AgentList
+    AgentList,
 )
-from app.schemas.task import (
-    TaskBase,
-    TaskCreate,
-    TaskUpdate,
-    Task,
-    TaskList
-)
-from app.schemas.activity import (
-    ActivityBase,
-    ActivityCreate,
-    Activity,
-    ActivityList
-)
+from app.schemas.task import TaskBase, TaskCreate, TaskUpdate, Task, TaskList
+from app.schemas.activity import ActivityBase, ActivityCreate, Activity, ActivityList
 from app.schemas.settings import (
     APIKeyBase,
     APIKeyCreate,
@@ -30,7 +19,7 @@ from app.schemas.settings import (
     APIKey,
     APIKeyMasked,
     ConnectionTestRequest,
-    ConnectionTestResponse
+    ConnectionTestResponse,
 )
 
 __all__ = [

@@ -11,4 +11,3 @@ __all__ = [
 from .slack_client import SlackClient
 from .microsoft_graph_client import MicrosoftGraphClient
 from .obsidian_client import ObsidianClient
-

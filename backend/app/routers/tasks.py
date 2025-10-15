@@ -26,7 +26,7 @@ async def create_task(
     request: Request,
     task_data: TaskCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: Dict = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user),
 ):
     """Create a new task and trigger execution (rate limited, requires authentication)."""
     # Verify agent exists
@@ -36,10 +36,7 @@ async def create_task(
         raise HTTPException(status_code=404, detail="Agent not found")
 
     # Create task
-    task = TaskModel(
-        id=str(uuid.uuid4()),
-        **task_data.model_dump()
-    )
+    task = TaskModel(id=str(uuid.uuid4()), **task_data.model_dump())
 
     db.add(task)
     await db.commit()
@@ -60,7 +57,7 @@ async def list_tasks(
     agent_id: Optional[str] = Query(None),
     status: Optional[TaskStatus] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: Dict = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user),
 ):
     """List tasks with filtering and pagination."""
     query = select(TaskModel)
@@ -86,19 +83,13 @@ async def list_tasks(
     total_pages = (total + page_size - 1) // page_size
 
     return TaskList(
-        tasks=list(tasks),
-        total=total,
-        page=page,
-        page_size=page_size,
-        total_pages=total_pages
+        tasks=list(tasks), total=total, page=page, page_size=page_size, total_pages=total_pages
     )
 
 
 @router.get("/{task_id}", response_model=Task)
 async def get_task(
-    task_id: str,
-    db: AsyncSession = Depends(get_db),
-    current_user: Dict = Depends(get_current_user)
+    task_id: str, db: AsyncSession = Depends(get_db), current_user: Dict = Depends(get_current_user)
 ):
     """Get task details (requires authentication)."""
     result = await db.execute(select(TaskModel).where(TaskModel.id == task_id))
@@ -115,7 +106,7 @@ async def update_task(
     task_id: str,
     task_data: TaskUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: Dict = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user),
 ):
     """Update task (requires authentication)."""
     result = await db.execute(select(TaskModel).where(TaskModel.id == task_id))

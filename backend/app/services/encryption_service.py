@@ -24,7 +24,7 @@ class EncryptionService:
         """Initialize the cipher with encryption key."""
         # Get encryption key from environment
         key_str = os.getenv("ENCRYPTION_KEY")
-        
+
         if not key_str:
             logger.warning(
                 "ENCRYPTION_KEY not set in environment. "
@@ -36,7 +36,7 @@ class EncryptionService:
             key_str = Fernet.generate_key().decode()
             logger.warning(f"Generated encryption key: {key_str}")
             logger.warning("Add this to your .env file: ENCRYPTION_KEY={key_str}")
-        
+
         try:
             self._key = key_str.encode() if isinstance(key_str, str) else key_str
             self._cipher = Fernet(self._key)
@@ -64,9 +64,9 @@ class EncryptionService:
         """
         if plaintext is None or plaintext == "":
             return None
-        
+
         try:
-            encrypted = self.cipher.encrypt(plaintext.encode('utf-8'))
+            encrypted = self.cipher.encrypt(plaintext.encode("utf-8"))
             return encrypted
         except Exception as e:
             logger.error(f"Encryption failed: {e}")
@@ -84,10 +84,10 @@ class EncryptionService:
         """
         if ciphertext is None:
             return None
-        
+
         try:
             decrypted = self.cipher.decrypt(ciphertext)
-            return decrypted.decode('utf-8')
+            return decrypted.decode("utf-8")
         except Exception as e:
             logger.error(f"Decryption failed: {e}")
             raise
@@ -101,7 +101,7 @@ class EncryptionService:
             Base64-encoded encryption key as string
         """
         key = Fernet.generate_key()
-        return key.decode('utf-8')
+        return key.decode("utf-8")
 
 
 # Global encryption service instance
@@ -111,4 +111,3 @@ encryption_service = EncryptionService()
 def get_encryption_service() -> EncryptionService:
     """Get encryption service instance."""
     return encryption_service
-

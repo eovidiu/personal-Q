@@ -15,7 +15,9 @@ class Schedule(Base):
     __tablename__ = "schedules"
 
     id = Column(String, primary_key=True, index=True)
-    agent_id = Column(String, ForeignKey("agents.id", ondelete="CASCADE"), nullable=False, index=True)
+    agent_id = Column(
+        String, ForeignKey("agents.id", ondelete="CASCADE"), nullable=False, index=True
+    )
 
     # Schedule details
     name = Column(String, nullable=False)

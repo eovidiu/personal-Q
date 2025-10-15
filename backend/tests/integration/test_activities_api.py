@@ -8,13 +8,10 @@ import sys
 import os
 
 
-from app.main import app
-
-
 @pytest.mark.asyncio
-async def test_list_activities_endpoint():
+async def test_list_activities_endpoint(test_app):
     """Test GET /activities endpoint."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(app=test_app, base_url="http://test") as client:
         response = await client.get("/api/v1/activities")
 
     assert response.status_code == 200
@@ -26,9 +23,9 @@ async def test_list_activities_endpoint():
 
 
 @pytest.mark.asyncio
-async def test_list_activities_with_filters():
+async def test_list_activities_with_filters(test_app):
     """Test GET /activities with query parameters."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(app=test_app, base_url="http://test") as client:
         # Create an agent to generate activities
         agent_response = await client.post(
             "/api/v1/agents",
@@ -37,8 +34,8 @@ async def test_list_activities_with_filters():
                 "description": "Test",
                 "agent_type": "conversational",
                 "model": "claude-3-5-sonnet-20241022",
-                "system_prompt": "Test."
-            }
+                "system_prompt": "Test.",
+            },
         )
         agent_id = agent_response.json()["id"]
 
@@ -51,9 +48,9 @@ async def test_list_activities_with_filters():
 
 
 @pytest.mark.asyncio
-async def test_list_activities_pagination():
+async def test_list_activities_pagination(test_app):
     """Test activities pagination."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(app=test_app, base_url="http://test") as client:
         # Get first page
         response = await client.get("/api/v1/activities?page=1&page_size=10")
 

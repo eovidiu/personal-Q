@@ -16,20 +16,21 @@ logger = logging.getLogger(__name__)
 
 class TaskBase(BaseModel):
     """Base schema for Task with validation."""
+
     title: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = Field(None, max_length=5000)
     priority: TaskPriority = TaskPriority.MEDIUM
     input_data: Dict[str, Any] = Field(default_factory=dict)
-    
-    @field_validator('title', 'description')
+
+    @field_validator("title", "description")
     @classmethod
     def sanitize_html(cls, v):
         """Escape HTML in text fields to prevent XSS."""
         if v:
             return html.escape(v.strip())
         return v
-    
-    @field_validator('input_data')
+
+    @field_validator("input_data")
     @classmethod
     def validate_input_data(cls, v):
         """Validate size of input_data to prevent abuse."""
@@ -38,17 +39,19 @@ class TaskBase(BaseModel):
         # Limit size of input_data to 10KB
         json_str = json.dumps(v)
         if len(json_str) > 10000:
-            raise ValueError('input_data too large (max 10KB)')
+            raise ValueError("input_data too large (max 10KB)")
         return v
 
 
 class TaskCreate(TaskBase):
     """Schema for creating a task."""
+
     agent_id: str
 
 
 class TaskUpdate(BaseModel):
     """Schema for updating a task."""
+
     title: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     priority: Optional[TaskPriority] = None
@@ -57,6 +60,7 @@ class TaskUpdate(BaseModel):
 
 class Task(TaskBase):
     """Schema for Task response."""
+
     id: str
     agent_id: str
     status: TaskStatus
@@ -77,6 +81,7 @@ class Task(TaskBase):
 
 class TaskList(BaseModel):
     """Schema for paginated task list."""
+
     tasks: List[Task]
     total: int
     page: int

@@ -23,7 +23,7 @@ async def list_activities(
     activity_type: Optional[ActivityType] = Query(None),
     status: Optional[ActivityStatus] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: Dict = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user),
 ):
     """List activities with filtering and pagination (requires authentication)."""
     query = select(ActivityModel)
@@ -56,5 +56,5 @@ async def list_activities(
         total=total,
         page=page,
         page_size=page_size,
-        total_pages=total_pages
+        total_pages=total_pages,
     )

@@ -30,6 +30,7 @@ async def seed_default_data():
     async with AsyncSessionLocal() as session:
         # Check if data already exists
         from sqlalchemy import select
+
         result = await session.execute(select(Agent))
         existing_agents = result.scalars().all()
 
@@ -53,7 +54,7 @@ async def seed_default_data():
                 "tasks_completed": 1247,
                 "tasks_failed": 60,
                 "last_active": utcnow(),
-                "tools_config": {"slack": True, "email": True}
+                "tools_config": {"slack": True, "email": True},
             },
             {
                 "id": str(uuid.uuid4()),
@@ -69,7 +70,7 @@ async def seed_default_data():
                 "tasks_completed": 856,
                 "tasks_failed": 24,
                 "last_active": utcnow(),
-                "tools_config": {"onedrive": True, "obsidian": True}
+                "tools_config": {"onedrive": True, "obsidian": True},
             },
             {
                 "id": str(uuid.uuid4()),
@@ -85,7 +86,7 @@ async def seed_default_data():
                 "tasks_completed": 543,
                 "tasks_failed": 45,
                 "last_active": utcnow(),
-                "tools_config": {"obsidian": True}
+                "tools_config": {"obsidian": True},
             },
             {
                 "id": str(uuid.uuid4()),
@@ -101,7 +102,7 @@ async def seed_default_data():
                 "tasks_completed": 234,
                 "tasks_failed": 12,
                 "last_active": utcnow(),
-                "tools_config": {}
+                "tools_config": {},
             },
             {
                 "id": str(uuid.uuid4()),
@@ -117,7 +118,7 @@ async def seed_default_data():
                 "tasks_completed": 1892,
                 "tasks_failed": 156,
                 "last_active": None,
-                "tools_config": {"outlook": True}
+                "tools_config": {"outlook": True},
             },
             {
                 "id": str(uuid.uuid4()),
@@ -133,8 +134,8 @@ async def seed_default_data():
                 "tasks_completed": 412,
                 "tasks_failed": 32,
                 "last_active": utcnow(),
-                "tools_config": {"onedrive": True, "obsidian": True}
-            }
+                "tools_config": {"onedrive": True, "obsidian": True},
+            },
         ]
 
         for agent_data in sample_agents:
@@ -151,18 +152,15 @@ async def init_chroma_collections():
 
     # Create collections
     chroma_client.get_or_create_collection(
-        name="conversations",
-        metadata={"description": "Agent conversation history"}
+        name="conversations", metadata={"description": "Agent conversation history"}
     )
 
     chroma_client.get_or_create_collection(
-        name="agent_outputs",
-        metadata={"description": "Agent task outputs and results"}
+        name="agent_outputs", metadata={"description": "Agent task outputs and results"}
     )
 
     chroma_client.get_or_create_collection(
-        name="documents",
-        metadata={"description": "Embedded documents for RAG"}
+        name="documents", metadata={"description": "Embedded documents for RAG"}
     )
 
     print("ChromaDB collections initialized.")

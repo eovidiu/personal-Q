@@ -19,10 +19,7 @@ class AgentService:
     """Service for agent operations."""
 
     @staticmethod
-    async def create_agent(
-        db: AsyncSession,
-        agent_data: AgentCreate
-    ) -> Agent:
+    async def create_agent(db: AsyncSession, agent_data: AgentCreate) -> Agent:
         """
         Create a new agent.
 
@@ -37,18 +34,13 @@ class AgentService:
             ValueError: If agent name already exists
         """
         # Check if agent with same name exists
-        result = await db.execute(
-            select(Agent).where(Agent.name == agent_data.name)
-        )
+        result = await db.execute(select(Agent).where(Agent.name == agent_data.name))
         existing_agent = result.scalar_one_or_none()
         if existing_agent:
             raise ValueError(f"Agent with name '{agent_data.name}' already exists")
 
         # Create agent
-        agent = Agent(
-            id=str(uuid.uuid4()),
-            **agent_data.model_dump()
-        )
+        agent = Agent(id=str(uuid.uuid4()), **agent_data.model_dump())
 
         db.add(agent)
         await db.commit()
@@ -61,7 +53,7 @@ class AgentService:
             activity_type=ActivityType.AGENT_CREATED,
             status=ActivityStatus.SUCCESS,
             title=f"Agent '{agent.name}' created",
-            description=f"Created {agent.agent_type.value} agent"
+            description=f"Created {agent.agent_type.value} agent",
         )
         db.add(activity)
         await db.commit()
@@ -72,11 +64,11 @@ class AgentService:
     async def get_agent(db: AsyncSession, agent_id: str) -> Optional[Agent]:
         """
         Get agent by ID with caching.
-        
+
         Args:
             db: Database session
             agent_id: Agent ID
-            
+
         Returns:
             Agent or None if not found
         """
@@ -85,17 +77,15 @@ class AgentService:
         cached_agent = await cache_service.get(cache_key)
         if cached_agent:
             return cached_agent
-        
+
         # Fetch from database
-        result = await db.execute(
-            select(Agent).where(Agent.id == agent_id)
-        )
+        result = await db.execute(select(Agent).where(Agent.id == agent_id))
         agent = result.scalar_one_or_none()
-        
+
         # Cache for 10 minutes
         if agent:
             await cache_service.set(cache_key, agent, ttl=600)
-        
+
         return agent
 
     @staticmethod
@@ -106,7 +96,7 @@ class AgentService:
         status: Optional[AgentStatus] = None,
         agent_type: Optional[AgentType] = None,
         search: Optional[str] = None,
-        tags: Optional[List[str]] = None
+        tags: Optional[List[str]] = None,
     ) -> tuple[List[Agent], int]:
         """
         List agents with filtering and pagination.
@@ -134,8 +124,7 @@ class AgentService:
 
         if search:
             search_filter = or_(
-                Agent.name.ilike(f"%{search}%"),
-                Agent.description.ilike(f"%{search}%")
+                Agent.name.ilike(f"%{search}%"), Agent.description.ilike(f"%{search}%")
             )
             query = query.where(search_filter)
 
@@ -163,9 +152,7 @@ class AgentService:
 
     @staticmethod
     async def update_agent(
-        db: AsyncSession,
-        agent_id: str,
-        agent_data: AgentUpdate
+        db: AsyncSession, agent_id: str, agent_data: AgentUpdate
     ) -> Optional[Agent]:
         """
         Update agent.
@@ -187,9 +174,7 @@ class AgentService:
 
         # Check name uniqueness if name is being updated
         if agent_data.name and agent_data.name != agent.name:
-            result = await db.execute(
-                select(Agent).where(Agent.name == agent_data.name)
-            )
+            result = await db.execute(select(Agent).where(Agent.name == agent_data.name))
             existing_agent = result.scalar_one_or_none()
             if existing_agent:
                 raise ValueError(f"Agent with name '{agent_data.name}' already exists")
@@ -211,7 +196,7 @@ class AgentService:
             activity_type=ActivityType.AGENT_UPDATED,
             status=ActivityStatus.SUCCESS,
             title=f"Agent '{agent.name}' updated",
-            description="Agent configuration updated"
+            description="Agent configuration updated",
         )
         db.add(activity)
         await db.commit()
@@ -223,9 +208,7 @@ class AgentService:
 
     @staticmethod
     async def update_agent_status(
-        db: AsyncSession,
-        agent_id: str,
-        status_data: AgentStatusUpdate
+        db: AsyncSession, agent_id: str, status_data: AgentStatusUpdate
     ) -> Optional[Agent]:
         """Update agent status."""
         agent = await AgentService.get_agent(db, agent_id)
@@ -255,7 +238,7 @@ class AgentService:
             activity_type=activity_type,
             status=ActivityStatus.SUCCESS,
             title=f"Agent '{agent.name}' status changed",
-            description=f"Status changed from {old_status.value} to {status_data.status.value}"
+            description=f"Status changed from {old_status.value} to {status_data.status.value}",
         )
         db.add(activity)
         await db.commit()
@@ -290,7 +273,7 @@ class AgentService:
             activity_type=ActivityType.AGENT_DELETED,
             status=ActivityStatus.SUCCESS,
             title=f"Agent '{agent_name}' deleted",
-            description="Agent removed from system"
+            description="Agent removed from system",
         )
         db.add(activity)
 

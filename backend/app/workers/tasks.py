@@ -42,18 +42,14 @@ async def execute_agent_task(self, task_id: str):
     """
     async with AsyncSessionLocal() as db:
         # Get task
-        result = await db.execute(
-            select(TaskModel).where(TaskModel.id == task_id)
-        )
+        result = await db.execute(select(TaskModel).where(TaskModel.id == task_id))
         task = result.scalar_one_or_none()
 
         if not task:
             return {"error": "Task not found"}
 
         # Get agent
-        result = await db.execute(
-            select(Agent).where(Agent.id == task.agent_id)
-        )
+        result = await db.execute(select(Agent).where(Agent.id == task.agent_id))
         agent = result.scalar_one_or_none()
 
         if not agent:
@@ -71,10 +67,7 @@ async def execute_agent_task(self, task_id: str):
         try:
             # Execute with CrewAI
             result = await CrewService.execute_agent_task(
-                db,
-                agent,
-                task.description or task.title,
-                task.input_data
+                db, agent, task.description or task.title, task.input_data
             )
 
             # Update task with result
@@ -174,9 +167,7 @@ def execute_scheduled_task(self, schedule_id: str):
             from app.models.schedule import Schedule
 
             # Get schedule
-            result = await db.execute(
-                select(Schedule).where(Schedule.id == schedule_id)
-            )
+            result = await db.execute(select(Schedule).where(Schedule.id == schedule_id))
             schedule = result.scalar_one_or_none()
 
             if not schedule or not schedule.is_active:
@@ -189,7 +180,7 @@ def execute_scheduled_task(self, schedule_id: str):
                 title=schedule.name,
                 description=schedule.description,
                 status=TaskStatus.PENDING,
-                input_data=schedule.task_config
+                input_data=schedule.task_config,
             )
             db.add(task)
             await db.commit()

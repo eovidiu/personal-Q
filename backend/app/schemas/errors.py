@@ -20,7 +20,7 @@ class ErrorDetail(BaseModel):
             "example": {
                 "code": "INVALID_EMAIL",
                 "message": "Email format is invalid",
-                "field": "email"
+                "field": "email",
             }
         }
 
@@ -32,7 +32,9 @@ class ErrorResponse(BaseModel):
     detail: Optional[str] = Field(None, description="Detailed error message")
     code: Optional[str] = Field(None, description="Machine-readable error code")
     errors: Optional[List[ErrorDetail]] = Field(None, description="List of specific errors")
-    timestamp: str = Field(default_factory=lambda: utcnow().isoformat(), description="ISO timestamp")
+    timestamp: str = Field(
+        default_factory=lambda: utcnow().isoformat(), description="ISO timestamp"
+    )
     request_id: Optional[str] = Field(None, description="Request ID for tracking")
 
     class Config:
@@ -42,14 +44,10 @@ class ErrorResponse(BaseModel):
                 "detail": "Invalid input data provided",
                 "code": "VALIDATION_ERROR",
                 "errors": [
-                    {
-                        "code": "REQUIRED_FIELD",
-                        "message": "This field is required",
-                        "field": "name"
-                    }
+                    {"code": "REQUIRED_FIELD", "message": "This field is required", "field": "name"}
                 ],
                 "timestamp": "2024-01-15T10:30:00Z",
-                "request_id": "a1b2c3d4"
+                "request_id": "a1b2c3d4",
             }
         }
 
@@ -76,7 +74,7 @@ class NotFoundErrorResponse(ErrorResponse):
                 "detail": "Agent with ID 'abc123' not found",
                 "code": "NOT_FOUND",
                 "timestamp": "2024-01-15T10:30:00Z",
-                "request_id": "a1b2c3d4"
+                "request_id": "a1b2c3d4",
             }
         }
 
@@ -95,7 +93,7 @@ class UnauthorizedErrorResponse(ErrorResponse):
                 "detail": "Invalid or missing authentication token",
                 "code": "UNAUTHORIZED",
                 "timestamp": "2024-01-15T10:30:00Z",
-                "request_id": "a1b2c3d4"
+                "request_id": "a1b2c3d4",
             }
         }
 
@@ -122,7 +120,7 @@ class ConflictErrorResponse(ErrorResponse):
                 "detail": "Agent with name 'MyAgent' already exists",
                 "code": "CONFLICT",
                 "timestamp": "2024-01-15T10:30:00Z",
-                "request_id": "a1b2c3d4"
+                "request_id": "a1b2c3d4",
             }
         }
 
@@ -149,7 +147,7 @@ class InternalServerErrorResponse(ErrorResponse):
                 "detail": "An unexpected error occurred",
                 "code": "INTERNAL_SERVER_ERROR",
                 "timestamp": "2024-01-15T10:30:00Z",
-                "request_id": "a1b2c3d4"
+                "request_id": "a1b2c3d4",
             }
         }
 
@@ -168,7 +166,6 @@ class ServiceUnavailableErrorResponse(ErrorResponse):
                 "detail": "LLM service is temporarily unavailable",
                 "code": "SERVICE_UNAVAILABLE",
                 "timestamp": "2024-01-15T10:30:00Z",
-                "request_id": "a1b2c3d4"
+                "request_id": "a1b2c3d4",
             }
         }
-

@@ -13,7 +13,7 @@ from tenacity import (
     wait_exponential,
     retry_if_exception_type,
     before_sleep_log,
-    after_log
+    after_log,
 )
 from pybreaker import CircuitBreaker, CircuitBreakerError
 
@@ -23,11 +23,7 @@ logger = logging.getLogger(__name__)
 
 # Configure circuit breaker for LLM calls
 # Opens after 5 failures, stays open for 60s
-llm_breaker = CircuitBreaker(
-    fail_max=5,
-    reset_timeout=60,
-    name="llm_service"
-)
+llm_breaker = CircuitBreaker(fail_max=5, reset_timeout=60, name="llm_service")
 
 
 class LLMService:
@@ -65,16 +61,10 @@ class LLMService:
             # Create httpx client with timeout configuration
             http_client = httpx.Client(
                 timeout=httpx.Timeout(
-                    connect=self.TIMEOUT_CONNECT,
-                    read=self.TIMEOUT_READ,
-                    write=10.0,
-                    pool=5.0
+                    connect=self.TIMEOUT_CONNECT, read=self.TIMEOUT_READ, write=10.0, pool=5.0
                 )
             )
-            self._client = Anthropic(
-                api_key=self.api_key,
-                http_client=http_client
-            )
+            self._client = Anthropic(api_key=self.api_key, http_client=http_client)
 
         return self._client
 
@@ -88,16 +78,10 @@ class LLMService:
             # Create httpx async client with timeout configuration
             http_client = httpx.AsyncClient(
                 timeout=httpx.Timeout(
-                    connect=self.TIMEOUT_CONNECT,
-                    read=self.TIMEOUT_READ,
-                    write=10.0,
-                    pool=5.0
+                    connect=self.TIMEOUT_CONNECT, read=self.TIMEOUT_READ, write=10.0, pool=5.0
                 )
             )
-            self._async_client = AsyncAnthropic(
-                api_key=self.api_key,
-                http_client=http_client
-            )
+            self._async_client = AsyncAnthropic(api_key=self.api_key, http_client=http_client)
 
         return self._async_client
 
@@ -107,7 +91,7 @@ class LLMService:
         wait=wait_exponential(multiplier=1, min=1, max=10),
         before_sleep=before_sleep_log(logger, logging.WARNING),
         after=after_log(logger, logging.INFO),
-        reraise=True
+        reraise=True,
     )
     @llm_breaker
     async def generate(
@@ -117,7 +101,7 @@ class LLMService:
         model: str = None,
         temperature: float = None,
         max_tokens: int = None,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         """
         Generate completion using Claude with retries and circuit breaker.
@@ -143,20 +127,22 @@ class LLMService:
         max_tokens = max_tokens or settings.default_max_tokens
 
         try:
-            logger.debug(f"Generating with model {model}, temp={temperature}, max_tokens={max_tokens}")
-            
+            logger.debug(
+                f"Generating with model {model}, temp={temperature}, max_tokens={max_tokens}"
+            )
+
             response = await self.async_client.messages.create(
                 model=model,
                 max_tokens=max_tokens,
                 temperature=temperature,
                 system=system_prompt if system_prompt else "",
-                messages=[
-                    {"role": "user", "content": prompt}
-                ],
-                **kwargs
+                messages=[{"role": "user", "content": prompt}],
+                **kwargs,
             )
 
-            logger.info(f"LLM generation successful: {response.usage.input_tokens} in, {response.usage.output_tokens} out")
+            logger.info(
+                f"LLM generation successful: {response.usage.input_tokens} in, {response.usage.output_tokens} out"
+            )
 
             return {
                 "content": response.content[0].text,
@@ -166,7 +152,7 @@ class LLMService:
                     "input_tokens": response.usage.input_tokens,
                     "output_tokens": response.usage.output_tokens,
                 },
-                "id": response.id
+                "id": response.id,
             }
 
         except RateLimitError as e:
@@ -193,7 +179,7 @@ class LLMService:
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=10),
         before_sleep=before_sleep_log(logger, logging.WARNING),
-        reraise=True
+        reraise=True,
     )
     @llm_breaker
     async def generate_stream(
@@ -203,7 +189,7 @@ class LLMService:
         model: str = None,
         temperature: float = None,
         max_tokens: int = None,
-        **kwargs
+        **kwargs,
     ) -> AsyncIterator[str]:
         """
         Generate streaming completion using Claude with retries and circuit breaker.
@@ -229,16 +215,14 @@ class LLMService:
 
         try:
             logger.debug(f"Streaming with model {model}")
-            
+
             async with self.async_client.messages.stream(
                 model=model,
                 max_tokens=max_tokens,
                 temperature=temperature,
                 system=system_prompt if system_prompt else "",
-                messages=[
-                    {"role": "user", "content": prompt}
-                ],
-                **kwargs
+                messages=[{"role": "user", "content": prompt}],
+                **kwargs,
             ) as stream:
                 async for text in stream.text_stream:
                     yield text
@@ -263,15 +247,13 @@ class LLMService:
         try:
             test_client = AsyncAnthropic(
                 api_key=api_key,
-                http_client=httpx.AsyncClient(
-                    timeout=httpx.Timeout(connect=5.0, read=10.0)
-                )
+                http_client=httpx.AsyncClient(timeout=httpx.Timeout(connect=5.0, read=10.0)),
             )
             # Make a minimal test request
             response = await test_client.messages.create(
                 model="claude-3-5-sonnet-20241022",
                 max_tokens=10,
-                messages=[{"role": "user", "content": "test"}]
+                messages=[{"role": "user", "content": "test"}],
             )
             return True
         except Exception as e:
@@ -292,12 +274,7 @@ class LLMService:
         """
         return len(text) // 4
 
-    def estimate_cost(
-        self,
-        input_tokens: int,
-        output_tokens: int,
-        model: str = None
-    ) -> float:
+    def estimate_cost(self, input_tokens: int, output_tokens: int, model: str = None) -> float:
         """
         Estimate cost for token usage.
 
@@ -339,7 +316,7 @@ class LLMService:
             "fail_counter": llm_breaker.fail_counter,
             "fail_max": llm_breaker.fail_max,
             "reset_timeout": llm_breaker.reset_timeout,
-            "is_open": llm_breaker.current_state == "open"
+            "is_open": llm_breaker.current_state == "open",
         }
 
 

@@ -9,4 +9,3 @@ __all__ = [
 
 from .celery_app import celery_app
 from .tasks import execute_agent_task
-

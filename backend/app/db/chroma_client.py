@@ -32,10 +32,7 @@ class ChromaDBClient:
         # Initialize client with persistent storage
         self._client = chromadb.PersistentClient(
             path=settings.chroma_db_path,
-            settings=ChromaSettings(
-                anonymized_telemetry=False,
-                allow_reset=True
-            )
+            settings=ChromaSettings(anonymized_telemetry=False, allow_reset=True),
         )
 
     @property
@@ -56,10 +53,7 @@ class ChromaDBClient:
         """
         # ChromaDB requires metadata to be non-empty if provided
         if metadata:
-            return self._client.get_or_create_collection(
-                name=name,
-                metadata=metadata
-            )
+            return self._client.get_or_create_collection(name=name, metadata=metadata)
         else:
             return self._client.get_or_create_collection(name=name)
 

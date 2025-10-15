@@ -9,6 +9,7 @@ from datetime import datetime
 
 class APIKeyBase(BaseModel):
     """Base schema for API Key."""
+
     service_name: str = Field(..., min_length=1, max_length=100)
     api_key: Optional[str] = None
     access_token: Optional[str] = None
@@ -22,11 +23,13 @@ class APIKeyBase(BaseModel):
 
 class APIKeyCreate(APIKeyBase):
     """Schema for creating/updating an API key."""
+
     pass
 
 
 class APIKeyUpdate(BaseModel):
     """Schema for updating an API key."""
+
     api_key: Optional[str] = None
     access_token: Optional[str] = None
     refresh_token: Optional[str] = None
@@ -39,6 +42,7 @@ class APIKeyUpdate(BaseModel):
 
 class APIKey(APIKeyBase):
     """Schema for API Key response (masked)."""
+
     id: str
     last_validated: Optional[datetime]
     created_at: datetime
@@ -50,6 +54,7 @@ class APIKey(APIKeyBase):
 
 class APIKeyMasked(BaseModel):
     """Schema for masked API key display."""
+
     id: str
     service_name: str
     is_active: bool
@@ -72,17 +77,19 @@ class APIKeyMasked(BaseModel):
             has_client_credentials=bool(api_key.client_id and api_key.client_secret),
             last_validated=api_key.last_validated,
             created_at=api_key.created_at,
-            updated_at=api_key.updated_at
+            updated_at=api_key.updated_at,
         )
 
 
 class ConnectionTestRequest(BaseModel):
     """Schema for testing connection."""
+
     service_name: str
 
 
 class ConnectionTestResponse(BaseModel):
     """Schema for connection test result."""
+
     service_name: str
     success: bool
     message: str

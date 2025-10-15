@@ -13,6 +13,7 @@ from app.db.database import Base
 
 class AgentStatus(str, enum.Enum):
     """Agent status enum."""
+
     ACTIVE = "active"
     INACTIVE = "inactive"
     TRAINING = "training"
@@ -22,6 +23,7 @@ class AgentStatus(str, enum.Enum):
 
 class AgentType(str, enum.Enum):
     """Agent type enum."""
+
     CONVERSATIONAL = "conversational"
     ANALYTICAL = "analytical"
     CREATIVE = "creative"
@@ -66,7 +68,7 @@ class Agent(Base):
         "Task",
         back_populates="agent",
         cascade="all, delete-orphan",
-        lazy="select"  # Load when accessed (prevents N+1)
+        lazy="select",  # Load when accessed (prevents N+1)
     )
 
     activities = relationship(
@@ -74,14 +76,11 @@ class Agent(Base):
         back_populates="agent",
         cascade="all, delete-orphan",
         lazy="select",
-        order_by="Activity.created_at.desc()"
+        order_by="Activity.created_at.desc()",
     )
 
     schedules = relationship(
-        "Schedule",
-        back_populates="agent",
-        cascade="all, delete-orphan",
-        lazy="select"
+        "Schedule", back_populates="agent", cascade="all, delete-orphan", lazy="select"
     )
 
     @property
