@@ -11,7 +11,7 @@ import os
 @pytest.mark.asyncio
 async def test_list_activities_endpoint(test_app):
     """Test GET /activities endpoint."""
-    async with AsyncClient(app=test_app, base_url="http://test") as client:
+    async with AsyncClient(app=test_app, base_url="http://test", follow_redirects=True) as client:
         response = await client.get("/api/v1/activities")
 
     assert response.status_code == 200
@@ -25,7 +25,7 @@ async def test_list_activities_endpoint(test_app):
 @pytest.mark.asyncio
 async def test_list_activities_with_filters(test_app):
     """Test GET /activities with query parameters."""
-    async with AsyncClient(app=test_app, base_url="http://test") as client:
+    async with AsyncClient(app=test_app, base_url="http://test", follow_redirects=True) as client:
         # Create an agent to generate activities
         agent_response = await client.post(
             "/api/v1/agents",
@@ -50,7 +50,7 @@ async def test_list_activities_with_filters(test_app):
 @pytest.mark.asyncio
 async def test_list_activities_pagination(test_app):
     """Test activities pagination."""
-    async with AsyncClient(app=test_app, base_url="http://test") as client:
+    async with AsyncClient(app=test_app, base_url="http://test", follow_redirects=True) as client:
         # Get first page
         response = await client.get("/api/v1/activities?page=1&page_size=10")
 

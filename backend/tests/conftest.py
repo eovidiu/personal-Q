@@ -74,13 +74,16 @@ def override_get_db(test_session):
 
 
 @pytest.fixture
-def test_app(test_engine, override_get_db):
+async def test_app(test_engine, test_session):
     """Create test FastAPI app with overridden dependencies."""
     from config.settings import settings
 
     # Create app with empty lifespan to skip DB/Redis initialization
     @asynccontextmanager
     async def empty_lifespan(app: FastAPI):
+        # Initialize database tables
+        async with test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
         yield
 
     app = FastAPI(
@@ -104,6 +107,9 @@ def test_app(test_engine, override_get_db):
     app.include_router(metrics.router, prefix=f"{settings.api_prefix}/metrics", tags=["metrics"])
 
     # Override database dependency
-    app.dependency_overrides[get_db] = override_get_db
+    async def _override_get_db():
+        yield test_session
+
+    app.dependency_overrides[get_db] = _override_get_db
 
     return app

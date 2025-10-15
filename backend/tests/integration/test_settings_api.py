@@ -13,7 +13,7 @@ import os
 @pytest.mark.asyncio
 async def test_create_api_key_endpoint(test_app):
     """Test POST /settings/api-keys endpoint."""
-    async with AsyncClient(app=test_app, base_url="http://test") as client:
+    async with AsyncClient(app=test_app, base_url="http://test", follow_redirects=True) as client:
         response = await client.post(
             "/api/v1/settings/api-keys",
             json={
@@ -32,7 +32,7 @@ async def test_create_api_key_endpoint(test_app):
 @pytest.mark.asyncio
 async def test_list_api_keys_endpoint(test_app):
     """Test GET /settings/api-keys endpoint."""
-    async with AsyncClient(app=test_app, base_url="http://test") as client:
+    async with AsyncClient(app=test_app, base_url="http://test", follow_redirects=True) as client:
         # Create an API key first
         await client.post(
             "/api/v1/settings/api-keys",
@@ -54,7 +54,7 @@ async def test_list_api_keys_endpoint(test_app):
 @pytest.mark.asyncio
 async def test_delete_api_key_endpoint(test_app):
     """Test DELETE /settings/api-keys/{service_name} endpoint."""
-    async with AsyncClient(app=test_app, base_url="http://test") as client:
+    async with AsyncClient(app=test_app, base_url="http://test", follow_redirects=True) as client:
         # Create API key first
         await client.post(
             "/api/v1/settings/api-keys",
@@ -74,7 +74,7 @@ async def test_delete_api_key_endpoint(test_app):
 @pytest.mark.asyncio
 async def test_test_connection_endpoint(test_app):
     """Test POST /settings/test-connection endpoint."""
-    async with AsyncClient(app=test_app, base_url="http://test") as client:
+    async with AsyncClient(app=test_app, base_url="http://test", follow_redirects=True) as client:
         # Create API key first
         await client.post(
             "/api/v1/settings/api-keys",

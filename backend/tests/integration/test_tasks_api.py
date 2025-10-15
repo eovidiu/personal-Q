@@ -14,7 +14,7 @@ import os
 async def test_create_task_endpoint(test_app):
     """Test POST /tasks endpoint."""
     # First create an agent
-    async with AsyncClient(app=test_app, base_url="http://test") as client:
+    async with AsyncClient(app=test_app, base_url="http://test", follow_redirects=True) as client:
         agent_response = await client.post(
             "/api/v1/agents",
             json={
@@ -49,7 +49,7 @@ async def test_create_task_endpoint(test_app):
 @pytest.mark.asyncio
 async def test_list_tasks_endpoint(test_app):
     """Test GET /tasks endpoint."""
-    async with AsyncClient(app=test_app, base_url="http://test") as client:
+    async with AsyncClient(app=test_app, base_url="http://test", follow_redirects=True) as client:
         response = await client.get("/api/v1/tasks")
 
     assert response.status_code == 200
@@ -62,7 +62,7 @@ async def test_list_tasks_endpoint(test_app):
 async def test_get_task_endpoint(test_app):
     """Test GET /tasks/{id} endpoint."""
     # Create task first
-    async with AsyncClient(app=test_app, base_url="http://test") as client:
+    async with AsyncClient(app=test_app, base_url="http://test", follow_redirects=True) as client:
         agent_response = await client.post(
             "/api/v1/agents",
             json={
@@ -97,7 +97,7 @@ async def test_get_task_endpoint(test_app):
 async def test_update_task_endpoint(test_app):
     """Test PATCH /tasks/{id} endpoint."""
     # Create task first
-    async with AsyncClient(app=test_app, base_url="http://test") as client:
+    async with AsyncClient(app=test_app, base_url="http://test", follow_redirects=True) as client:
         agent_response = await client.post(
             "/api/v1/agents",
             json={
