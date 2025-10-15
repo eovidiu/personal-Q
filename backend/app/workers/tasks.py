@@ -2,21 +2,21 @@
 Celery tasks for background processing.
 """
 
-from celery import Task
-from datetime import datetime, timedelta
-from sqlalchemy import select, delete
-import sys
 import asyncio
+import sys
+from datetime import datetime, timedelta
 
-
-from app.workers.celery_app import celery_app
 from app.db.database import AsyncSessionLocal
-from app.models.agent import Agent
-from app.models.task import Task as TaskModel, TaskStatus
 from app.models.activity import Activity
+from app.models.agent import Agent
+from app.models.task import Task as TaskModel
+from app.models.task import TaskStatus
 from app.services.crew_service import CrewService
 from app.utils.datetime_utils import utcnow
+from app.workers.celery_app import celery_app
+from celery import Task
 from config.settings import settings
+from sqlalchemy import delete, select
 
 
 class AsyncTask(Task):

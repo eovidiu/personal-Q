@@ -2,13 +2,13 @@
 Agent database model.
 """
 
-from sqlalchemy import Column, String, Text, Float, Integer, DateTime, Enum, JSON, Boolean
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
-from datetime import datetime
 import enum
+from datetime import datetime
 
 from app.db.database import Base
+from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, Float, Integer, String, Text
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
 
 class AgentStatus(str, enum.Enum):

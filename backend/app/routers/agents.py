@@ -3,16 +3,16 @@ ABOUTME: Agent API endpoints with rate limiting for write operations.
 ABOUTME: Agent creation and deletion are rate limited to prevent abuse.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional, List, Dict
+from typing import Dict, List, Optional
 
 from app.db.database import get_db
-from app.schemas.agent import AgentCreate, AgentUpdate, AgentStatusUpdate, Agent, AgentList
-from app.models.agent import AgentStatus, AgentType
-from app.services.agent_service import AgentService
-from app.middleware.rate_limit import limiter, get_rate_limit
 from app.dependencies.auth import get_current_user
+from app.middleware.rate_limit import get_rate_limit, limiter
+from app.models.agent import AgentStatus, AgentType
+from app.schemas.agent import Agent, AgentCreate, AgentList, AgentStatusUpdate, AgentUpdate
+from app.services.agent_service import AgentService
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 

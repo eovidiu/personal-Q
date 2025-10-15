@@ -2,25 +2,25 @@
 Pydantic schemas for API request/response validation.
 """
 
+from app.schemas.activity import Activity, ActivityBase, ActivityCreate, ActivityList
 from app.schemas.agent import (
+    Agent,
     AgentBase,
     AgentCreate,
-    AgentUpdate,
-    AgentStatusUpdate,
-    Agent,
     AgentList,
+    AgentStatusUpdate,
+    AgentUpdate,
 )
-from app.schemas.task import TaskBase, TaskCreate, TaskUpdate, Task, TaskList
-from app.schemas.activity import ActivityBase, ActivityCreate, Activity, ActivityList
 from app.schemas.settings import (
+    APIKey,
     APIKeyBase,
     APIKeyCreate,
-    APIKeyUpdate,
-    APIKey,
     APIKeyMasked,
+    APIKeyUpdate,
     ConnectionTestRequest,
     ConnectionTestResponse,
 )
+from app.schemas.task import Task, TaskBase, TaskCreate, TaskList, TaskUpdate
 
 __all__ = [
     # Agent schemas

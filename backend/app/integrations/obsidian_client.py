@@ -6,7 +6,8 @@ ABOUTME: All file operations are non-blocking to prevent event loop starvation.
 import asyncio
 import logging
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
 import aiofiles
 
 logger = logging.getLogger(__name__)

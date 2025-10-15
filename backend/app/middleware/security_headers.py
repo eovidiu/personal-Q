@@ -3,10 +3,11 @@ ABOUTME: Security headers middleware for protecting against common web vulnerabi
 ABOUTME: Implements CSP, HSTS, clickjacking protection, and other security headers.
 """
 
+import logging
+
+from config.settings import settings
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
-from config.settings import settings
-import logging
 
 logger = logging.getLogger(__name__)
 

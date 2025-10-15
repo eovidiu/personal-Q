@@ -2,14 +2,14 @@
 Pydantic schemas for Agent model with input validation and sanitization.
 """
 
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List, Dict, Any
-from datetime import datetime
 import html
 import json
 import logging
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from app.models.agent import AgentStatus, AgentType
+from pydantic import BaseModel, Field, field_validator
 
 logger = logging.getLogger(__name__)
 

@@ -2,12 +2,12 @@
 Activity log database model.
 """
 
-from sqlalchemy import Column, String, Text, DateTime, Enum, JSON, ForeignKey
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 import enum
 
 from app.db.database import Base
+from sqlalchemy import JSON, Column, DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
 
 class ActivityType(str, enum.Enum):

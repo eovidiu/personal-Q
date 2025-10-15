@@ -3,21 +3,21 @@ ABOUTME: LLM service for Claude integration with comprehensive resilience featur
 ABOUTME: Includes timeouts, retries with exponential backoff, and circuit breakers.
 """
 
-import httpx
 import logging
-from anthropic import Anthropic, AsyncAnthropic, APIError, APIConnectionError, RateLimitError
-from typing import Optional, Dict, Any, AsyncIterator
+from typing import Any, AsyncIterator, Dict, Optional
+
+import httpx
+from anthropic import Anthropic, APIConnectionError, APIError, AsyncAnthropic, RateLimitError
+from config.settings import settings
+from pybreaker import CircuitBreaker, CircuitBreakerError
 from tenacity import (
+    after_log,
+    before_sleep_log,
     retry,
+    retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
-    retry_if_exception_type,
-    before_sleep_log,
-    after_log,
 )
-from pybreaker import CircuitBreaker, CircuitBreakerError
-
-from config.settings import settings
 
 logger = logging.getLogger(__name__)
 

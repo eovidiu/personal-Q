@@ -3,16 +3,18 @@ ABOUTME: CrewAI service for multi-agent orchestration and collaboration.
 ABOUTME: Uses LangChain-compatible ChatAnthropic for proper integration.
 """
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 from app.models.agent import Agent, AgentType
 from app.services.llm_service import llm_service
 from config.settings import settings
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Try to import CrewAI, but provide stubs if not available
 try:
-    from crewai import Agent as CrewAgent, Task as CrewTask, Crew, Process
+    from crewai import Agent as CrewAgent
+    from crewai import Crew, Process
+    from crewai import Task as CrewTask
     from langchain_anthropic import ChatAnthropic
 
     CREWAI_AVAILABLE = True

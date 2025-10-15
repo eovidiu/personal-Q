@@ -3,17 +3,17 @@ ABOUTME: Google OAuth authentication router for single-user system.
 ABOUTME: Implements login, callback, logout, and session verification.
 """
 
-from fastapi import APIRouter, Request, HTTPException, Depends, status
-from fastapi.responses import RedirectResponse, JSONResponse
-from authlib.integrations.starlette_client import OAuth
-from starlette.config import Config
-from typing import Optional
 import logging
 from datetime import timedelta
-import jwt
+from typing import Optional
 
-from config.settings import settings
+import jwt
 from app.utils.datetime_utils import utcnow
+from authlib.integrations.starlette_client import OAuth
+from config.settings import settings
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import JSONResponse, RedirectResponse
+from starlette.config import Config
 
 logger = logging.getLogger(__name__)
 

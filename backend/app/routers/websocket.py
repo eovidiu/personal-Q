@@ -2,14 +2,14 @@
 WebSocket endpoints for real-time updates with JWT authentication.
 """
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
-from typing import Dict, Set, Optional
 import json
 import logging
-import jwt
+from typing import Dict, Optional, Set
 
+import jwt
 from app.utils.datetime_utils import utcnow
 from config.settings import settings
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

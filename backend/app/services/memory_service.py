@@ -5,9 +5,9 @@ ABOUTME: All ChromaDB operations run in executor to avoid blocking event loop.
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
 import uuid
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
 
 from app.db.chroma_client import get_chroma_client
 from app.utils.datetime_utils import utcnow

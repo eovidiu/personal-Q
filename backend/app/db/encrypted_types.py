@@ -4,6 +4,7 @@ ABOUTME: Automatically encrypts on write and decrypts on read transparently.
 """
 
 import logging
+
 from sqlalchemy import LargeBinary, TypeDecorator
 
 logger = logging.getLogger(__name__)

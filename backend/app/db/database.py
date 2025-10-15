@@ -2,12 +2,12 @@
 Database configuration and session management.
 """
 
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.pool import StaticPool
 import os
 
 from config.settings import settings
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.pool import StaticPool
 
 # Convert SQLite URL to async format
 DATABASE_URL = settings.database_url.replace("sqlite:///", "sqlite+aiosqlite:///")

@@ -2,11 +2,11 @@
 Pydantic schemas for Activity model.
 """
 
-from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any, List
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from app.models.activity import ActivityType, ActivityStatus
+from app.models.activity import ActivityStatus, ActivityType
+from pydantic import BaseModel, Field
 
 
 class ActivityBase(BaseModel):

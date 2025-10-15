@@ -3,9 +3,10 @@ ABOUTME: Standard error response schemas for API consistency.
 ABOUTME: Provides unified error format across all endpoints for better client handling.
 """
 
-from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import List, Optional
+
 from app.utils.datetime_utils import utcnow
+from pydantic import BaseModel, Field
 
 
 class ErrorDetail(BaseModel):

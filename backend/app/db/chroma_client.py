@@ -2,10 +2,10 @@
 ChromaDB client configuration and utilities.
 """
 
-import chromadb
-from chromadb.config import Settings as ChromaSettings
 import os
 
+import chromadb
+from chromadb.config import Settings as ChromaSettings
 from config.settings import settings
 
 

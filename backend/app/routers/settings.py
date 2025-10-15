@@ -2,24 +2,24 @@
 Settings and API key management endpoints.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-import uuid
 import logging
+import uuid
 from typing import Dict
 
 from app.db.database import get_db
+from app.dependencies.auth import get_current_user
+from app.models.api_key import APIKey
 from app.schemas.settings import (
     APIKeyCreate,
-    APIKeyUpdate,
     APIKeyMasked,
+    APIKeyUpdate,
     ConnectionTestRequest,
     ConnectionTestResponse,
 )
-from app.models.api_key import APIKey
 from app.services.llm_service import get_llm_service
-from app.dependencies.auth import get_current_user
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

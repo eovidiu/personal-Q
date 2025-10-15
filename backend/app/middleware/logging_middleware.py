@@ -3,12 +3,13 @@ ABOUTME: Request logging middleware for observability and monitoring.
 ABOUTME: Tracks request duration, status codes, and adds request IDs for tracing.
 """
 
+import logging
 import time
 import uuid
-import logging
+from contextvars import ContextVar
+
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
-from contextvars import ContextVar
 
 logger = logging.getLogger(__name__)
 

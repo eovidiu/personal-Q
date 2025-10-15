@@ -2,17 +2,17 @@
 Agent service layer for business logic.
 """
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_
-from typing import Optional, List
 import uuid
 from datetime import datetime
+from typing import List, Optional
 
+from app.models.activity import Activity, ActivityStatus, ActivityType
 from app.models.agent import Agent, AgentStatus, AgentType
-from app.models.activity import Activity, ActivityType, ActivityStatus
-from app.schemas.agent import AgentCreate, AgentUpdate, AgentStatusUpdate
-from app.utils.datetime_utils import utcnow
+from app.schemas.agent import AgentCreate, AgentStatusUpdate, AgentUpdate
 from app.services.cache_service import cache_service
+from app.utils.datetime_utils import utcnow
+from sqlalchemy import func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class AgentService:

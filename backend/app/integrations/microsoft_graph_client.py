@@ -2,9 +2,10 @@
 Microsoft Graph API client for Outlook and OneDrive.
 """
 
+from typing import Any, Dict, List, Optional
+
+from azure.identity import ClientSecretCredential, DeviceCodeCredential
 from msgraph import GraphServiceClient
-from azure.identity import DeviceCodeCredential, ClientSecretCredential
-from typing import List, Dict, Any, Optional
 
 
 class MicrosoftGraphClient:

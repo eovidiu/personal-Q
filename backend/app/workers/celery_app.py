@@ -2,11 +2,10 @@
 Celery application configuration.
 """
 
-from celery import Celery
-from celery.schedules import crontab
 import sys
 
-
+from celery import Celery
+from celery.schedules import crontab
 from config.settings import settings
 
 # Create Celery app

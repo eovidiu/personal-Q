@@ -5,15 +5,16 @@ ABOUTME: Uses asyncio.to_thread, includes timeouts and retry logic for resilienc
 
 import asyncio
 import logging
+from typing import Any, Dict, List, Optional
+
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
-from typing import List, Dict, Any, Optional
 from tenacity import (
+    before_sleep_log,
     retry,
+    retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
-    retry_if_exception_type,
-    before_sleep_log,
 )
 
 logger = logging.getLogger(__name__)

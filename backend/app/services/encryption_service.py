@@ -3,10 +3,11 @@ ABOUTME: Encryption service for securing sensitive data at rest using Fernet sym
 ABOUTME: All API keys and secrets are encrypted before storage in database.
 """
 
-import os
 import logging
-from cryptography.fernet import Fernet
+import os
 from typing import Optional
+
+from cryptography.fernet import Fernet
 
 logger = logging.getLogger(__name__)
 

@@ -3,16 +3,15 @@ Database initialization and seeding utilities.
 """
 
 import asyncio
+import sys
 import uuid
 from datetime import datetime
-from sqlalchemy.ext.asyncio import AsyncSession
-import sys
 
-
-from app.db.database import AsyncSessionLocal, Base, engine
 from app.db.chroma_client import chroma_client
+from app.db.database import AsyncSessionLocal, Base, engine
 from app.models import Agent, AgentStatus, AgentType, APIKey
 from app.utils.datetime_utils import utcnow
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def init_database():

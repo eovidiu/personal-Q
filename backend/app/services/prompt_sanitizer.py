@@ -3,8 +3,8 @@ ABOUTME: Prompt sanitization service to prevent LLM prompt injection attacks.
 ABOUTME: Validates and sanitizes user inputs before sending to LLM services.
 """
 
-import re
 import logging
+import re
 from typing import Optional
 
 logger = logging.getLogger(__name__)

@@ -2,11 +2,10 @@
 Schedule model for agent task scheduling.
 """
 
-from sqlalchemy import Column, String, Text, DateTime, Boolean, ForeignKey, JSON
+from app.db.database import Base
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-
-from app.db.database import Base
 
 
 class Schedule(Base):

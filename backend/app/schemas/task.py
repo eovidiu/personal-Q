@@ -2,14 +2,14 @@
 Pydantic schemas for Task model with input validation and sanitization.
 """
 
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional, Dict, Any, List
-from datetime import datetime
-import json
 import html
+import json
 import logging
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from app.models.task import TaskStatus, TaskPriority
+from app.models.task import TaskPriority, TaskStatus
+from pydantic import BaseModel, Field, field_validator
 
 logger = logging.getLogger(__name__)
 
