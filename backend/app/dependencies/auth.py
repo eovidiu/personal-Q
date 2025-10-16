@@ -33,9 +33,19 @@ async def get_current_user(
     Raises:
         HTTPException: If token is invalid, expired, or user not authorized
     """
-    # DEVELOPMENT BYPASS: Skip auth in debug mode (development environments only)
-    if settings.debug and settings.env != "production" and credentials is None:
-        logger.info("Debug mode: Bypassing authentication")
+    # DEVELOPMENT BYPASS: Skip auth in debug mode with explicit opt-in
+    # Requires ALLOW_DEBUG_BYPASS=true environment variable for safety
+    import os
+    if (settings.debug and
+        settings.env == "development" and
+        credentials is None and
+        os.getenv("ALLOW_DEBUG_BYPASS") == "true"):
+
+        logger.warning("=" * 80)
+        logger.warning("WARNING: Authentication bypassed in debug mode!")
+        logger.warning("This should NEVER happen in production!")
+        logger.warning("Set ALLOW_DEBUG_BYPASS=false to disable this bypass")
+        logger.warning("=" * 80)
         return {"email": "dev@personal-q.local", "sub": "dev-user"}
 
     # Production mode: Require authentication

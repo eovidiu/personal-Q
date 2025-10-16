@@ -10,6 +10,7 @@ import json
 import logging
 
 from app.models.agent import AgentStatus, AgentType
+from app.services.prompt_sanitizer import PromptSanitizer
 
 logger = logging.getLogger(__name__)
 
@@ -27,39 +28,47 @@ class AgentBase(BaseModel):
     avatar_url: Optional[str] = Field(None, max_length=500)
     tools_config: Dict[str, Any] = Field(default_factory=dict)
     
-    @field_validator('name', 'description')
+    @field_validator('name')
     @classmethod
-    def sanitize_html(cls, v):
-        """Escape HTML in text fields to prevent XSS."""
-        if v:
-            return html.escape(v.strip())
-        return v
-    
+    def validate_name(cls, v):
+        """Validate agent name against injection and enforce format."""
+        if not v:
+            return v
+        try:
+            # Use PromptSanitizer for strict validation
+            sanitized = PromptSanitizer.validate_agent_name(v)
+            return sanitized
+        except ValueError as e:
+            raise ValueError(f"Invalid agent name: {e}")
+
+    @field_validator('description')
+    @classmethod
+    def validate_description(cls, v):
+        """Validate agent description against injection."""
+        if not v:
+            return v
+        try:
+            # Use PromptSanitizer for comprehensive sanitization
+            sanitized = PromptSanitizer.validate_description(v)
+            return sanitized
+        except ValueError as e:
+            raise ValueError(f"Invalid description: {e}")
+
     @field_validator('system_prompt')
     @classmethod
     def validate_system_prompt(cls, v):
-        """Validate and check system prompt for potential injection."""
+        """Validate and sanitize system prompt against injection attacks."""
         if not v:
             return v
-        
-        v = v.strip()
-        
-        # Check for potential prompt injection patterns
-        dangerous_patterns = [
-            "ignore previous instructions",
-            "disregard all",
-            "new instructions:",
-            "forget everything",
-            "override your",
-            "system: you are now"
-        ]
-        
-        v_lower = v.lower()
-        for pattern in dangerous_patterns:
-            if pattern in v_lower:
-                logger.warning(f"Potential prompt injection pattern detected: '{pattern}'")
-        
-        return v
+
+        try:
+            # Use PromptSanitizer for comprehensive LLM injection protection
+            # This BLOCKS requests with injection patterns instead of just logging
+            sanitized = PromptSanitizer.validate_system_prompt(v)
+            return sanitized
+        except ValueError as e:
+            # Rejection logged internally by sanitizer
+            raise ValueError(f"System prompt rejected: {e}")
     
     @field_validator('tags')
     @classmethod

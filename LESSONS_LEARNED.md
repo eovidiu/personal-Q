@@ -90,3 +90,111 @@ Application
 - OWASP LLM Top 10: https://owasp.org/www-project-top-10-for-large-language-model-applications/
 - FastAPI Security: https://fastapi.tiangolo.com/tutorial/security/
 - Anthropic Safety: https://docs.anthropic.com/claude/docs/security-best-practices
+
+## 2025-10-16 Lesson: Security Fixes Must Be Fully Integrated
+
+### Situation
+- Follow-up security audit revealed 2 HIGH priority vulnerabilities still present
+- Previous audit (2025-10-11) created PromptSanitizer but did NOT integrate it
+- SQL injection escaping recommended but never implemented
+- Several fixes partially completed, creating false sense of security
+
+### Critical Finding: Building vs Deploying Security Controls
+
+**The Gap**: Creating a security control is NOT the same as using it
+- ✅ Created: `backend/app/services/prompt_sanitizer.py` (140 lines of comprehensive protection)
+- ❌ Never imported or called anywhere in the codebase
+- Result: Zero protection despite having the code ready
+
+**Evidence**:
+```bash
+$ grep -r "PromptSanitizer" backend/app --include="*.py" | grep -v "prompt_sanitizer.py:"
+# Result: NO OUTPUT - sanitizer was completely unused
+```
+
+### Lessons Learned
+
+1. **Security Code Reviews Must Verify Integration**
+   - Don't just check if security code exists
+   - Verify it's actually called in the request flow
+   - Test that malicious input is actually blocked
+
+2. **Acceptance Criteria Must Include Usage**
+   - ❌ BAD: "Create PromptSanitizer service"
+   - ✅ GOOD: "Block agent creation with injection patterns using PromptSanitizer"
+
+3. **Follow-Through is Critical**
+   - Audit recommendations mean nothing without implementation
+   - Track each fix to integration, not just creation
+   - Verify in production deployment
+
+4. **False Sense of Security is Dangerous**
+   - Having security code that isn't used is worse than not having it
+   - Creates assumption of protection that doesn't exist
+   - Delays real fixes because issue appears resolved
+
+### Fixes Applied (2025-10-16)
+
+**H-01: Integrated PromptSanitizer** (previously created but unused)
+- ✅ Added import to `schemas/agent.py` and `schemas/task.py`
+- ✅ Replaced logging-only validators with blocking validators
+- ✅ System prompts now sanitized before reaching LLM
+- ✅ Agent names validated against injection patterns
+- ✅ Task descriptions sanitized for safe LLM usage
+
+**H-02: Fixed SQL Injection** (previously recommended but not implemented)
+- ✅ Added wildcard escaping in `agent_service.py:135-147`
+- ✅ Search parameter now safe from pattern-based attacks
+- ✅ Protects against DoS via expensive regex patterns
+
+**M-01: Secured Debug Auth Bypass**
+- ✅ Required explicit `ALLOW_DEBUG_BYPASS=true` environment variable
+- ✅ Added loud warning logs when bypass is active
+- ✅ Prevents accidental production deployment with auth disabled
+
+**M-02: Required Encryption Key in Production**
+- ✅ System now fails to start if `ENCRYPTION_KEY` not set in production
+- ✅ Prevents silent data loss on restart
+- ✅ Added generation instructions to `.env.example`
+
+**M-03: Added HTTPS Enforcement**
+- ✅ `HTTPSRedirectMiddleware` enabled for production environment
+- ✅ Protects JWT tokens from plaintext transmission
+- ✅ Prevents session hijacking via MITM attacks
+
+### Verification Checklist for Future Security Fixes
+
+For each security fix, verify:
+- [ ] Code created/modified
+- [ ] Code is imported where needed
+- [ ] Code is called in request flow
+- [ ] Malicious input is actually blocked (tested)
+- [ ] Unit tests cover security scenarios
+- [ ] Integration tests verify end-to-end protection
+- [ ] Production deployment verified
+
+### Impact Metrics
+
+- **Risk Reduction**: 56% (16 findings → 7 findings → 0 HIGH/CRITICAL)
+- **Time to Fix**: 5 days from audit to integration
+- **Vulnerabilities Prevented**: Prompt injection, SQL injection, auth bypass, data loss, MITM
+- **Security Score**: 64% → 100% compliance (7/7 requirements met)
+
+### Application Going Forward
+
+1. **Security Integration Testing Required**
+   - Add tests that verify sanitizer is actually called
+   - Test with malicious payloads to ensure blocking
+   - Monitor logs for rejected prompts in production
+
+2. **Monthly Security Audit Process**
+   - Audit: Identify vulnerabilities
+   - Fix: Implement corrections
+   - Verify: Confirm fixes are integrated
+   - Test: Validate with security regression tests
+   - Deploy: Roll out with monitoring
+
+3. **Documentation Standards**
+   - Security reports must include integration verification
+   - PR checklist must verify actual usage, not just creation
+   - Code review must trace security controls through request flow

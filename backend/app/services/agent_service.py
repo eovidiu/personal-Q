@@ -133,9 +133,16 @@ class AgentService:
             query = query.where(Agent.agent_type == agent_type)
 
         if search:
+            # Escape SQL wildcards to prevent injection attacks
+            escaped_search = (
+                search.replace("\\", "\\\\")
+                     .replace("%", "\\%")
+                     .replace("_", "\\_")
+                     .replace("[", "\\[")
+            )
             search_filter = or_(
-                Agent.name.ilike(f"%{search}%"),
-                Agent.description.ilike(f"%{search}%")
+                Agent.name.ilike(f"%{escaped_search}%", escape="\\"),
+                Agent.description.ilike(f"%{escaped_search}%", escape="\\")
             )
             query = query.where(search_filter)
 

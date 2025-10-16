@@ -22,28 +22,39 @@ class EncryptionService:
 
     def _initialize(self):
         """Initialize the cipher with encryption key."""
+        # Import here to avoid circular dependency
+        from config.settings import settings
+
         # Get encryption key from environment
         key_str = os.getenv("ENCRYPTION_KEY")
-        
+
         if not key_str:
-            logger.warning(
-                "ENCRYPTION_KEY not set in environment. "
-                "Generating a new key for this session. "
-                "This key will be lost on restart!"
-            )
-            # Generate a new key for this session
-            # In production, this should be set in environment and persisted
-            key_str = Fernet.generate_key().decode()
-            logger.warning(f"Generated encryption key: {key_str}")
-            logger.warning("Add this to your .env file: ENCRYPTION_KEY={key_str}")
-        
+            if settings.env == "production":
+                # FAIL HARD in production - don't start without encryption key
+                raise ValueError(
+                    "ENCRYPTION_KEY environment variable is required in production.\n"
+                    "Generate a key with:\n"
+                    "  python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'\n"
+                    "Then add to .env file:\n"
+                    "  ENCRYPTION_KEY=<generated-key>"
+                )
+            else:
+                # Development: Generate temporary key with BIG warning
+                logger.error("=" * 80)
+                logger.error("CRITICAL: ENCRYPTION_KEY not set in environment!")
+                logger.error("All encrypted data will be LOST on restart!")
+                logger.error("=" * 80)
+                key_str = Fernet.generate_key().decode()
+                logger.error(f"Temporary encryption key generated: {key_str}")
+                logger.error("Add this to your .env file to persist data across restarts")
+
         try:
             self._key = key_str.encode() if isinstance(key_str, str) else key_str
             self._cipher = Fernet(self._key)
             logger.info("Encryption service initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize encryption service: {e}")
-            raise ValueError(f"Invalid encryption key: {e}")
+            raise ValueError(f"Invalid ENCRYPTION_KEY format: {e}")
 
     @property
     def cipher(self) -> Fernet:

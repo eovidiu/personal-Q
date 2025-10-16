@@ -10,6 +10,7 @@ import html
 import logging
 
 from app.models.task import TaskStatus, TaskPriority
+from app.services.prompt_sanitizer import PromptSanitizer
 
 logger = logging.getLogger(__name__)
 
@@ -21,13 +22,27 @@ class TaskBase(BaseModel):
     priority: TaskPriority = TaskPriority.MEDIUM
     input_data: Dict[str, Any] = Field(default_factory=dict)
     
-    @field_validator('title', 'description')
+    @field_validator('title')
     @classmethod
-    def sanitize_html(cls, v):
-        """Escape HTML in text fields to prevent XSS."""
+    def sanitize_title(cls, v):
+        """Escape HTML in title to prevent XSS."""
         if v:
             return html.escape(v.strip())
         return v
+
+    @field_validator('description')
+    @classmethod
+    def sanitize_description(cls, v):
+        """Sanitize task description for LLM safety against prompt injection."""
+        if not v:
+            return v
+
+        try:
+            # Task descriptions go to LLM - MUST sanitize for injection
+            sanitized = PromptSanitizer.sanitize(v, max_length=5000)
+            return sanitized
+        except ValueError as e:
+            raise ValueError(f"Task description rejected: {e}")
     
     @field_validator('input_data')
     @classmethod
