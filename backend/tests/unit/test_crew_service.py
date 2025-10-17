@@ -34,8 +34,7 @@ class TestCrewService:
         assert "Automation" in role_automation or "Workflow" in role_automation
 
     @pytest.mark.skipif(not CREWAI_AVAILABLE, reason="CrewAI not available")
-    @patch("app.services.crew_service.ChatAnthropic")
-    def test_create_crew_agent(self, mock_chat_anthropic):
+    def test_create_crew_agent(self):
         """Test creating a CrewAI agent from database model."""
         # Create test agent
         agent = Agent(
@@ -181,9 +180,15 @@ class TestCrewServiceIntegration:
         """Test executing a task with mocked LLM."""
         # Configure mocks
         mock_llm_service.api_key = "test-api-key"
+
+        # Mock LLM instance with all required attributes
         mock_llm = Mock()
         mock_llm.supports_stop_words = True
         mock_llm.model_name = "claude-3-5-sonnet-20241022"
+        mock_llm.temperature = 0.7
+        mock_llm.max_tokens = 2048
+
+        # Make ChatAnthropic constructor return the mock LLM
         mock_chat_anthropic.return_value = mock_llm
 
         # Mock Crew execution
@@ -223,9 +228,15 @@ class TestCrewServiceIntegration:
         """Test executing multi-agent task in sequential mode."""
         # Configure mocks
         mock_llm_service.api_key = "test-api-key"
+
+        # Mock LLM instance with all required attributes
         mock_llm = Mock()
         mock_llm.supports_stop_words = True
         mock_llm.model_name = "claude-3-5-sonnet-20241022"
+        mock_llm.temperature = 0.7
+        mock_llm.max_tokens = 2048
+
+        # Make ChatAnthropic constructor return the mock LLM
         mock_chat_anthropic.return_value = mock_llm
 
         # Mock Crew execution

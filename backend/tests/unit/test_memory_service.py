@@ -15,10 +15,38 @@ class TestMemoryService:
     """Tests for Memory Service."""
 
     @pytest.fixture
-    def mock_chroma_client(self):
+    def mock_collections(self):
+        """Create mock collections with count methods."""
+        conv_collection = Mock()
+        conv_collection.count = Mock(return_value=0)
+        conv_collection.add = Mock()
+        conv_collection.query = Mock(return_value={"documents": [], "metadatas": []})
+
+        outputs_collection = Mock()
+        outputs_collection.count = Mock(return_value=0)
+        outputs_collection.add = Mock()
+        outputs_collection.query = Mock(return_value={"documents": [], "metadatas": []})
+
+        docs_collection = Mock()
+        docs_collection.count = Mock(return_value=0)
+        docs_collection.add = Mock()
+        docs_collection.query = Mock(return_value={"documents": [], "metadatas": []})
+
+        return {
+            "conversations": conv_collection,
+            "agent_outputs": outputs_collection,
+            "documents": docs_collection
+        }
+
+    @pytest.fixture
+    def mock_chroma_client(self, mock_collections):
         """Create mock ChromaDB client."""
         client = Mock()
-        client.get_or_create_collection = Mock(return_value=Mock())
+
+        def get_or_create_collection(name, **kwargs):
+            return mock_collections.get(name, Mock())
+
+        client.get_or_create_collection = Mock(side_effect=get_or_create_collection)
         return client
 
     @pytest.fixture

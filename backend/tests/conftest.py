@@ -114,8 +114,12 @@ async def test_app(test_engine, test_session):
 
     # Override authentication dependency for tests
     from app.dependencies.auth import get_current_user
+    from typing import Optional
+    from fastapi.security import HTTPAuthorizationCredentials
 
-    async def _mock_current_user():
+    async def _mock_current_user(
+        credentials: Optional[HTTPAuthorizationCredentials] = None
+    ):
         return {"sub": "test-user-id", "email": "test@example.com"}
 
     app.dependency_overrides[get_current_user] = _mock_current_user
