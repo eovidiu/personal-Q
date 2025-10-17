@@ -3,10 +3,11 @@ ABOUTME: Encryption service for securing sensitive data at rest using Fernet sym
 ABOUTME: All API keys and secrets are encrypted before storage in database.
 """
 
-import os
 import logging
-from cryptography.fernet import Fernet
+import os
 from typing import Optional
+
+from cryptography.fernet import Fernet
 
 logger = logging.getLogger(__name__)
 
@@ -76,9 +77,9 @@ class EncryptionService:
         """
         if plaintext is None or plaintext == "":
             return None
-        
+
         try:
-            encrypted = self.cipher.encrypt(plaintext.encode('utf-8'))
+            encrypted = self.cipher.encrypt(plaintext.encode("utf-8"))
             return encrypted
         except Exception as e:
             logger.error(f"Encryption failed: {e}")
@@ -96,10 +97,10 @@ class EncryptionService:
         """
         if ciphertext is None:
             return None
-        
+
         try:
             decrypted = self.cipher.decrypt(ciphertext)
-            return decrypted.decode('utf-8')
+            return decrypted.decode("utf-8")
         except Exception as e:
             logger.error(f"Decryption failed: {e}")
             raise
@@ -113,7 +114,7 @@ class EncryptionService:
             Base64-encoded encryption key as string
         """
         key = Fernet.generate_key()
-        return key.decode('utf-8')
+        return key.decode("utf-8")
 
 
 # Global encryption service instance
@@ -123,4 +124,3 @@ encryption_service = EncryptionService()
 def get_encryption_service() -> EncryptionService:
     """Get encryption service instance."""
     return encryption_service
-

@@ -2,15 +2,16 @@
 Pydantic schemas for Activity model.
 """
 
-from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any, List
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from app.models.activity import ActivityType, ActivityStatus
+from app.models.activity import ActivityStatus, ActivityType
+from pydantic import BaseModel, Field
 
 
 class ActivityBase(BaseModel):
     """Base schema for Activity."""
+
     activity_type: ActivityType
     status: ActivityStatus = ActivityStatus.INFO
     title: str = Field(..., min_length=1, max_length=255)
@@ -20,12 +21,14 @@ class ActivityBase(BaseModel):
 
 class ActivityCreate(ActivityBase):
     """Schema for creating an activity."""
+
     agent_id: Optional[str] = None
     task_id: Optional[str] = None
 
 
 class Activity(ActivityBase):
     """Schema for Activity response."""
+
     id: str
     agent_id: Optional[str]
     task_id: Optional[str]
@@ -37,6 +40,7 @@ class Activity(ActivityBase):
 
 class ActivityList(BaseModel):
     """Schema for paginated activity list."""
+
     activities: List[Activity]
     total: int
     page: int

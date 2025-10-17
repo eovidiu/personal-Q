@@ -3,10 +3,11 @@ ABOUTME: Security headers middleware for protecting against common web vulnerabi
 ABOUTME: Implements CSP, HSTS, clickjacking protection, and other security headers.
 """
 
+import logging
+
+from config.settings import settings
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
-from config.settings import settings
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -38,18 +39,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "connect-src 'self' https://api.anthropic.com ws: wss:",  # Allow WebSocket and Anthropic API
             "frame-ancestors 'none'",  # Don't allow embedding
             "base-uri 'self'",
-            "form-action 'self'"
+            "form-action 'self'",
         ]
 
         # Only enforce strict CSP in production
-        if settings.env == 'production':
+        if settings.env == "production":
             response.headers["Content-Security-Policy"] = "; ".join(csp_parts)
         else:
             # Report-only mode for development
             response.headers["Content-Security-Policy-Report-Only"] = "; ".join(csp_parts)
 
         # HTTPS enforcement (HSTS) - only in production with HTTPS
-        if settings.env == 'production':
+        if settings.env == "production":
             # max-age=31536000 (1 year)
             # includeSubDomains: Apply to all subdomains
             # preload: Allow inclusion in browser HSTS preload lists
@@ -62,14 +63,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # Permissions Policy - disable unnecessary browser features
         permissions = [
-            "geolocation=()",      # No geolocation
-            "microphone=()",       # No microphone
-            "camera=()",           # No camera
-            "payment=()",          # No payment APIs
-            "usb=()",              # No USB access
-            "magnetometer=()",     # No magnetometer
-            "gyroscope=()",        # No gyroscope
-            "accelerometer=()"     # No accelerometer
+            "geolocation=()",  # No geolocation
+            "microphone=()",  # No microphone
+            "camera=()",  # No camera
+            "payment=()",  # No payment APIs
+            "usb=()",  # No USB access
+            "magnetometer=()",  # No magnetometer
+            "gyroscope=()",  # No gyroscope
+            "accelerometer=()",  # No accelerometer
         ]
         response.headers["Permissions-Policy"] = ", ".join(permissions)
 
@@ -79,4 +80,3 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             response.headers["Pragma"] = "no-cache"
 
         return response
-

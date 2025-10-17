@@ -17,8 +17,9 @@ from app.exceptions import (
 from app.middleware.logging_middleware import RequestLoggingMiddleware
 from app.middleware.rate_limit import limiter
 from app.middleware.security_headers import SecurityHeadersMiddleware
-from app.routers import activities, agents, auth, metrics, tasks, websocket
+from app.routers import activities, agents, auth, metrics
 from app.routers import settings as settings_router
+from app.routers import tasks, websocket
 from app.services.cache_service import cache_service
 from app.utils.datetime_utils import utcnow
 from config.settings import settings
