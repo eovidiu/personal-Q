@@ -124,4 +124,10 @@ async def test_app(test_engine, test_session):
 
     app.dependency_overrides[get_current_user] = _mock_current_user
 
+    # Add mock rate limiter to avoid Redis dependency in tests
+    from unittest.mock import Mock
+    mock_limiter = Mock()
+    mock_limiter.limit = lambda *args, **kwargs: lambda func: func  # Bypass decorator
+    app.state.limiter = mock_limiter
+
     return app
