@@ -14,7 +14,7 @@ from app.main import app
 @pytest.mark.asyncio
 async def test_get_dashboard_metrics():
     """Test GET /metrics/dashboard endpoint."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(app=app, base_url="http://test", follow_redirects=True) as client:
         response = await client.get("/api/v1/metrics/dashboard")
 
     assert response.status_code == 200
@@ -29,7 +29,7 @@ async def test_get_dashboard_metrics():
 async def test_get_agent_metrics():
     """Test GET /metrics/agent/{id} endpoint."""
     # Create agent first
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(app=app, base_url="http://test", follow_redirects=True) as client:
         agent_response = await client.post(
             "/api/v1/agents",
             json={
@@ -55,7 +55,7 @@ async def test_get_agent_metrics():
 @pytest.mark.asyncio
 async def test_get_memory_statistics():
     """Test GET /metrics/memory endpoint."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(app=app, base_url="http://test", follow_redirects=True) as client:
         response = await client.get("/api/v1/metrics/memory")
 
     assert response.status_code == 200

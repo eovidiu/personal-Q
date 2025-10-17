@@ -15,7 +15,7 @@ from app.models.agent import AgentType, AgentStatus
 @pytest.mark.asyncio
 async def test_create_agent_endpoint():
     """Test POST /agents endpoint."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(app=app, base_url="http://test", follow_redirects=True) as client:
         response = await client.post(
             "/api/v1/agents",
             json={
@@ -38,7 +38,7 @@ async def test_create_agent_endpoint():
 @pytest.mark.asyncio
 async def test_list_agents_endpoint():
     """Test GET /agents endpoint."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(app=app, base_url="http://test", follow_redirects=True) as client:
         response = await client.get("/api/v1/agents")
 
     assert response.status_code == 200
@@ -53,7 +53,7 @@ async def test_list_agents_endpoint():
 async def test_get_agent_endpoint():
     """Test GET /agents/{id} endpoint."""
     # Create agent first
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(app=app, base_url="http://test", follow_redirects=True) as client:
         create_response = await client.post(
             "/api/v1/agents",
             json={
@@ -78,7 +78,7 @@ async def test_get_agent_endpoint():
 @pytest.mark.asyncio
 async def test_get_agent_not_found():
     """Test GET /agents/{id} with invalid ID."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(app=app, base_url="http://test", follow_redirects=True) as client:
         response = await client.get("/api/v1/agents/invalid-id")
 
     assert response.status_code == 404
@@ -88,7 +88,7 @@ async def test_get_agent_not_found():
 async def test_update_agent_endpoint():
     """Test PUT /agents/{id} endpoint."""
     # Create agent first
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(app=app, base_url="http://test", follow_redirects=True) as client:
         create_response = await client.post(
             "/api/v1/agents",
             json={
@@ -116,7 +116,7 @@ async def test_update_agent_endpoint():
 async def test_update_agent_status_endpoint():
     """Test PATCH /agents/{id}/status endpoint."""
     # Create agent first
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(app=app, base_url="http://test", follow_redirects=True) as client:
         create_response = await client.post(
             "/api/v1/agents",
             json={
@@ -144,7 +144,7 @@ async def test_update_agent_status_endpoint():
 async def test_delete_agent_endpoint():
     """Test DELETE /agents/{id} endpoint."""
     # Create agent first
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(app=app, base_url="http://test", follow_redirects=True) as client:
         create_response = await client.post(
             "/api/v1/agents",
             json={
@@ -163,7 +163,7 @@ async def test_delete_agent_endpoint():
     assert response.status_code == 204
 
     # Verify deletion
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(app=app, base_url="http://test", follow_redirects=True) as client:
         response = await client.get(f"/api/v1/agents/{agent_id}")
     assert response.status_code == 404
 
@@ -171,7 +171,7 @@ async def test_delete_agent_endpoint():
 @pytest.mark.asyncio
 async def test_list_agents_with_filters():
     """Test GET /agents with query filters."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(app=app, base_url="http://test", follow_redirects=True) as client:
         # Create test agent
         await client.post(
             "/api/v1/agents",
