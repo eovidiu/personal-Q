@@ -1142,38 +1142,843 @@ cd backend
 celery -A app.workers.celery_app worker --loglevel=info
 ```
 
-### Production Considerations
+### Complete Production Deployment Guide
 
-#### Performance Tuning
-- **Uvicorn Workers**: Run multiple workers for concurrency
-  ```bash
-  uvicorn app.main:app --workers 4 --host 0.0.0.0 --port 8000
-  ```
-- **Redis Persistence**: Enable RDB snapshots for task queue durability
-- **SQLite WAL Mode**: Enable Write-Ahead Logging for better concurrency
-  ```python
-  engine = create_async_engine(
-      "sqlite+aiosqlite:///./data/personal-q.db",
-      connect_args={"check_same_thread": False, "timeout": 30},
-      echo=False,
-      poolclass=StaticPool,
-      execution_options={"pragma_journal_mode": "WAL"}
-  )
-  ```
+This section consolidates all steps required for a production-ready deployment of Personal-Q.
 
-#### Monitoring
-- **Logs**: Structured JSON logs to stdout/stderr
-- **Metrics**: Prometheus-compatible metrics endpoint (future)
-- **Health Checks**: `/health` endpoint for liveness/readiness probes
+#### Prerequisites
 
-#### Backup Strategy
+**System Requirements**:
+- **OS**: Linux (Ubuntu 20.04+ recommended), macOS, or Windows with WSL2
+- **CPU**: 4+ cores (minimum 2 cores)
+- **RAM**: 8GB (minimum 4GB)
+- **Disk**: 20GB free space
+- **Docker**: 20.10+
+- **Docker Compose**: 2.0+
+
+**Network Requirements**:
+- Ports 5173, 8000, 6379 available
+- Outbound HTTPS access for LLM API calls (Anthropic)
+- (Optional) Reverse proxy for SSL termination
+
+#### Step 1: Server Setup
+
 ```bash
+# Update system packages
+sudo apt-get update && sudo apt-get upgrade -y
+
+# Install Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker $USER
+
+# Install Docker Compose
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+
+# Verify installation
+docker --version
+docker-compose --version
+
+# Log out and back in for group changes to take effect
+```
+
+#### Step 2: Application Setup
+
+```bash
+# Clone repository
+cd /opt
+sudo git clone https://github.com/eovidiu/personal-Q.git
+cd personal-Q
+sudo chown -R $USER:$USER .
+
+# Create data directories
+mkdir -p data/backups
+chmod 755 data
+```
+
+#### Step 3: Environment Configuration
+
+```bash
+# Generate secure encryption key
+ENCRYPTION_KEY=$(openssl rand -base64 32)
+
+# Create production .env file
+cat > .env << EOF
+# ===== Required Configuration =====
+
+# Encryption key for secure API key storage (REQUIRED)
+ENCRYPTION_KEY=${ENCRYPTION_KEY}
+
+# ===== Database Configuration =====
+DATABASE_URL=sqlite+aiosqlite:///./data/personal_q.db
+CHROMA_DB_PATH=./data/chromadb
+
+# ===== Redis & Celery Configuration =====
+REDIS_URL=redis://redis:6379/0
+CELERY_BROKER_URL=redis://redis:6379/0
+CELERY_RESULT_BACKEND=redis://redis:6379/0
+
+# ===== API Keys (Configure via UI or here) =====
+
+# Anthropic Claude API Key (REQUIRED for agent functionality)
+ANTHROPIC_API_KEY=sk-ant-your-key-here
+
+# Optional: Slack Integration
+# SLACK_BOT_TOKEN=xoxb-your-slack-token
+
+# Optional: Microsoft Graph (Outlook/OneDrive)
+# MICROSOFT_CLIENT_ID=your-azure-app-id
+# MICROSOFT_CLIENT_SECRET=your-azure-secret
+
+# Optional: Obsidian Integration
+# OBSIDIAN_VAULT_PATH=/path/to/vault
+
+# ===== Application Configuration =====
+DEBUG=false
+LOG_LEVEL=INFO
+
+# CORS Origins (add your domain)
+CORS_ORIGINS=http://localhost:5173,https://your-domain.com
+
+# ===== Performance Configuration =====
+UVICORN_WORKERS=4
+CELERY_WORKER_CONCURRENCY=4
+
+# ===== Security (for future JWT auth) =====
+# SECRET_KEY=$(openssl rand -base64 32)
+EOF
+
+# Secure the .env file
+chmod 600 .env
+
+echo "✅ Environment configuration complete"
+echo "⚠️  Remember to add your ANTHROPIC_API_KEY to .env file"
+```
+
+#### Step 4: Production Docker Compose Configuration
+
+Create `docker-compose.prod.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  # Redis for Celery broker
+  redis:
+    image: redis:7-alpine
+    container_name: personal-q-redis-prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - personal-q-network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: personal-q-backend-prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=sqlite:///./data/personal_q.db
+      - CHROMA_DB_PATH=./data/chromadb
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - backend_data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4 --no-access-log
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - personal-q-network
+
+  # Celery Worker
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: personal-q-celery-worker-prod
+    restart: unless-stopped
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=sqlite:///./data/personal_q.db
+      - CHROMA_DB_PATH=./data/chromadb
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - backend_data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - personal-q-network
+
+  # Celery Beat (Scheduler)
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: personal-q-celery-beat-prod
+    restart: unless-stopped
+    command: celery -A app.workers.celery_app beat --loglevel=info
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=sqlite:///./data/personal_q.db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - backend_data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - personal-q-network
+
+  # Frontend (Production Build)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend.prod
+      args:
+        - VITE_API_BASE_URL=http://localhost:8000
+    container_name: personal-q-frontend-prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - personal-q-network
+
+volumes:
+  backend_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  personal-q-network:
+    driver: bridge
+```
+
+Create production frontend Dockerfile (`Dockerfile.frontend.prod`):
+
+```dockerfile
+# Build stage
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production
+
+# Copy source code
+COPY . .
+
+# Build for production
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+RUN npm run build
+
+# Production stage
+FROM nginx:alpine
+
+# Copy custom nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy built assets from builder stage
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Create non-root user
+RUN adduser -D -u 1000 appuser && \
+    chown -R appuser:appuser /usr/share/nginx/html
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+Create nginx configuration (`nginx.conf`):
+
+```nginx
+server {
+    listen 80;
+    server_name localhost;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Gzip compression
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+
+    # Security headers
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+
+    # Cache static assets
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # SPA routing
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Health check
+    location /health {
+        access_log off;
+        return 200 "OK\n";
+        add_header Content-Type text/plain;
+    }
+}
+```
+
+#### Step 5: Build and Start Production Services
+
+```bash
+# Build production images
+docker-compose -f docker-compose.prod.yml build --no-cache
+
+# Start services
+docker-compose -f docker-compose.prod.yml up -d
+
+# Verify all services are running
+docker-compose -f docker-compose.prod.yml ps
+
+# Expected output: All services should show "Up" status
+```
+
+#### Step 6: Initialize Database
+
+```bash
+# Run database initialization
+docker-compose -f docker-compose.prod.yml exec backend python app/db/init_db.py
+
+# Verify database created
+docker-compose -f docker-compose.prod.yml exec backend ls -lh /app/data/
+
+# Expected: personal_q.db file should exist
+```
+
+#### Step 7: Configure Reverse Proxy (Nginx/Traefik)
+
+**Option A: Nginx Reverse Proxy with SSL**
+
+```bash
+# Install Nginx and Certbot
+sudo apt-get install -y nginx certbot python3-certbot-nginx
+
+# Create Nginx config
+sudo nano /etc/nginx/sites-available/personal-q
+```
+
+```nginx
+# Redirect HTTP to HTTPS
+server {
+    listen 80;
+    listen [::]:80;
+    server_name your-domain.com;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location / {
+        return 301 https://$server_name$request_uri;
+    }
+}
+
+# HTTPS configuration
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name your-domain.com;
+
+    # SSL certificates (will be added by Certbot)
+    ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    # Security headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    # Frontend
+    location / {
+        proxy_pass http://127.0.0.1:5173;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # Backend API
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 75s;
+    }
+
+    # WebSocket
+    location /ws {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    # Health check
+    location /health {
+        proxy_pass http://127.0.0.1:8000/health;
+        access_log off;
+    }
+}
+```
+
+```bash
+# Enable site
+sudo ln -s /etc/nginx/sites-available/personal-q /etc/nginx/sites-enabled/
+
+# Test configuration
+sudo nginx -t
+
+# Obtain SSL certificate
+sudo certbot --nginx -d your-domain.com
+
+# Start Nginx
+sudo systemctl enable nginx
+sudo systemctl start nginx
+```
+
+#### Step 8: Configure Systemd Service (Alternative to Docker Compose)
+
+Create `/etc/systemd/system/personal-q.service`:
+
+```ini
+[Unit]
+Description=Personal-Q AI Agent Management System
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/personal-Q
+ExecStart=/usr/local/bin/docker-compose -f docker-compose.prod.yml up -d
+ExecStop=/usr/local/bin/docker-compose -f docker-compose.prod.yml down
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+# Enable and start service
+sudo systemctl daemon-reload
+sudo systemctl enable personal-q
+sudo systemctl start personal-q
+
+# Check status
+sudo systemctl status personal-q
+```
+
+#### Step 9: Configure Automated Backups
+
+Create backup script (`/opt/personal-Q/scripts/backup.sh`):
+
+```bash
+#!/bin/bash
+
+# Configuration
+BACKUP_DIR="/opt/personal-Q/data/backups"
+RETENTION_DAYS=30
+DATE=$(date +%Y%m%d_%H%M%S)
+
+# Create backup directory
+mkdir -p "$BACKUP_DIR"
+
 # Backup SQLite database
-cp data/personal-q.db data/backups/personal-q_$(date +%Y%m%d).db
+echo "Backing up SQLite database..."
+docker-compose -f /opt/personal-Q/docker-compose.prod.yml exec -T backend \
+    sqlite3 /app/data/personal_q.db ".backup '/app/data/backups/personal_q_${DATE}.db'"
 
 # Backup ChromaDB
-tar -czf data/backups/chroma_$(date +%Y%m%d).tar.gz data/chroma/
+echo "Backing up ChromaDB..."
+docker run --rm \
+    -v personal-q_backend_data:/data \
+    -v "$BACKUP_DIR:/backup" \
+    alpine tar czf "/backup/chromadb_${DATE}.tar.gz" /data/chromadb
+
+# Compress SQLite backup
+gzip "$BACKUP_DIR/personal_q_${DATE}.db"
+
+# Remove old backups
+echo "Cleaning up old backups (older than $RETENTION_DAYS days)..."
+find "$BACKUP_DIR" -name "*.gz" -type f -mtime +$RETENTION_DAYS -delete
+find "$BACKUP_DIR" -name "*.tar.gz" -type f -mtime +$RETENTION_DAYS -delete
+
+# Backup to remote (optional - uncomment and configure)
+# rsync -avz "$BACKUP_DIR/" user@backup-server:/backups/personal-q/
+
+echo "Backup completed: ${DATE}"
 ```
+
+```bash
+# Make executable
+chmod +x /opt/personal-Q/scripts/backup.sh
+
+# Test backup
+/opt/personal-Q/scripts/backup.sh
+
+# Add to crontab (daily at 2 AM)
+sudo crontab -e
+# Add line: 0 2 * * * /opt/personal-Q/scripts/backup.sh >> /var/log/personal-q-backup.log 2>&1
+```
+
+#### Step 10: Monitoring and Logging
+
+**Configure Log Rotation**:
+
+```bash
+# Create logrotate configuration
+sudo nano /etc/logrotate.d/personal-q
+```
+
+```
+/var/log/personal-q/*.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    notifempty
+    create 0644 root root
+    sharedscripts
+    postrotate
+        docker-compose -f /opt/personal-Q/docker-compose.prod.yml restart backend frontend
+    endscript
+}
+```
+
+**Set up log collection**:
+
+```bash
+# View logs
+docker-compose -f docker-compose.prod.yml logs -f
+
+# Export logs to file
+docker-compose -f docker-compose.prod.yml logs > /var/log/personal-q/app.log
+
+# Monitor specific service
+docker-compose -f docker-compose.prod.yml logs -f backend
+```
+
+**Health Monitoring Script** (`/opt/personal-Q/scripts/health-check.sh`):
+
+```bash
+#!/bin/bash
+
+# Check if all services are healthy
+BACKEND_HEALTH=$(curl -sf http://localhost:8000/health || echo "FAIL")
+FRONTEND_HEALTH=$(curl -sf http://localhost:5173/health || echo "FAIL")
+REDIS_HEALTH=$(docker-compose -f /opt/personal-Q/docker-compose.prod.yml exec -T redis redis-cli ping || echo "FAIL")
+
+# Send alert if any service is down (configure your alerting method)
+if [ "$BACKEND_HEALTH" = "FAIL" ] || [ "$FRONTEND_HEALTH" = "FAIL" ] || [ "$REDIS_HEALTH" != "PONG" ]; then
+    echo "⚠️ Health check failed at $(date)"
+    echo "Backend: $BACKEND_HEALTH"
+    echo "Frontend: $FRONTEND_HEALTH"
+    echo "Redis: $REDIS_HEALTH"
+
+    # Optional: Send email alert
+    # echo "Health check failed" | mail -s "Personal-Q Alert" admin@your-domain.com
+
+    # Optional: Restart services
+    # docker-compose -f /opt/personal-Q/docker-compose.prod.yml restart
+fi
+```
+
+```bash
+# Make executable and schedule
+chmod +x /opt/personal-Q/scripts/health-check.sh
+
+# Add to crontab (every 5 minutes)
+sudo crontab -e
+# Add line: */5 * * * * /opt/personal-Q/scripts/health-check.sh >> /var/log/personal-q-health.log 2>&1
+```
+
+#### Step 11: Performance Optimization
+
+**Enable SQLite WAL mode** (already configured in code):
+
+```python
+# backend/app/db/database.py
+execution_options={"pragma_journal_mode": "WAL"}
+```
+
+**Optimize Redis**:
+
+```bash
+# Add to docker-compose.prod.yml redis command:
+command: >
+  redis-server
+  --appendonly yes
+  --maxmemory 256mb
+  --maxmemory-policy allkeys-lru
+  --save 900 1
+  --save 300 10
+  --save 60 10000
+```
+
+**Configure Uvicorn workers** (already set to 4 in docker-compose.prod.yml)
+
+#### Step 12: Security Hardening
+
+**Enable firewall**:
+
+```bash
+# UFW firewall configuration
+sudo ufw allow 22/tcp    # SSH
+sudo ufw allow 80/tcp    # HTTP
+sudo ufw allow 443/tcp   # HTTPS
+sudo ufw enable
+
+# Verify
+sudo ufw status
+```
+
+**Secure Docker**:
+
+```bash
+# Limit Docker to localhost only (already configured in docker-compose.prod.yml)
+ports:
+  - "127.0.0.1:8000:8000"  # Backend only accessible via reverse proxy
+  - "127.0.0.1:6379:6379"  # Redis only accessible internally
+```
+
+**Regular updates**:
+
+```bash
+# Create update script
+cat > /opt/personal-Q/scripts/update.sh << 'EOF'
+#!/bin/bash
+cd /opt/personal-Q
+git pull origin main
+docker-compose -f docker-compose.prod.yml build --no-cache
+docker-compose -f docker-compose.prod.yml up -d
+EOF
+
+chmod +x /opt/personal-Q/scripts/update.sh
+```
+
+#### Step 13: Verification Checklist
+
+```bash
+# ✅ 1. Verify all containers are running
+docker-compose -f docker-compose.prod.yml ps
+
+# ✅ 2. Check backend health
+curl -f http://localhost:8000/health
+
+# ✅ 3. Check frontend
+curl -I http://localhost:5173
+
+# ✅ 4. Test API
+curl http://localhost:8000/api/v1/agents
+
+# ✅ 5. Verify database
+docker-compose -f docker-compose.prod.yml exec backend ls -lh /app/data/
+
+# ✅ 6. Check logs for errors
+docker-compose -f docker-compose.prod.yml logs --tail=50
+
+# ✅ 7. Test WebSocket
+# Open browser console and test: new WebSocket('ws://localhost:8000/ws')
+
+# ✅ 8. Verify backups
+ls -lh /opt/personal-Q/data/backups/
+
+# ✅ 9. Check SSL certificate (if using)
+sudo certbot certificates
+
+# ✅ 10. Test from external browser
+# Open https://your-domain.com
+```
+
+#### Step 14: Post-Deployment Configuration
+
+1. **Access the application**: Open https://your-domain.com
+2. **Configure API Keys**: Navigate to Settings → Add your Anthropic API key
+3. **Test Connection**: Click "Test Connection" to verify API key works
+4. **Create First Agent**: Go to Agents → Create New Agent
+5. **Run Test Task**: Assign a simple task to verify end-to-end functionality
+
+#### Troubleshooting Production Issues
+
+**Issue: Services won't start**
+```bash
+# Check logs
+docker-compose -f docker-compose.prod.yml logs
+
+# Verify .env file
+cat .env | grep -v "^#"
+
+# Check disk space
+df -h
+
+# Restart services
+docker-compose -f docker-compose.prod.yml restart
+```
+
+**Issue: Database locked errors**
+```bash
+# Verify WAL mode is enabled
+docker-compose -f docker-compose.prod.yml exec backend \
+    sqlite3 /app/data/personal_q.db "PRAGMA journal_mode;"
+
+# Should return: wal
+```
+
+**Issue: High memory usage**
+```bash
+# Check container stats
+docker stats
+
+# Reduce workers if needed in docker-compose.prod.yml:
+# --workers 2 (instead of 4)
+# --concurrency=2 (for Celery)
+```
+
+**Issue: SSL certificate renewal fails**
+```bash
+# Manual renewal
+sudo certbot renew --dry-run
+sudo certbot renew
+
+# Check nginx config
+sudo nginx -t
+
+# Restart nginx
+sudo systemctl restart nginx
+```
+
+#### Production Maintenance
+
+**Weekly**:
+- Review logs for errors
+- Check disk usage
+- Verify backups are running
+
+**Monthly**:
+- Update system packages: `sudo apt-get update && sudo apt-get upgrade`
+- Review and clean old Docker images: `docker system prune -a`
+- Test backup restoration
+- Review security updates
+
+**Quarterly**:
+- Update application: `git pull && docker-compose build --no-cache`
+- Review and optimize database size
+- Audit API keys and rotate if needed
+- Review user access (when multi-user is implemented)
+
+#### Performance Tuning
+
+**Resource Limits** (add to docker-compose.prod.yml):
+
+```yaml
+services:
+  backend:
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  celery_worker:
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+```
+
+**Monitoring** (future - Prometheus integration):
+
+```yaml
+services:
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+```
+
+---
+
+### Development vs Production Differences
+
+| Aspect | Development | Production |
+|--------|-------------|------------|
+| **Docker Compose** | `docker-compose.yml` | `docker-compose.prod.yml` |
+| **Frontend** | Vite dev server (HMR) | Nginx with built assets |
+| **Backend Workers** | 1 worker | 4 workers |
+| **Logging** | DEBUG level | INFO level |
+| **Ports** | Exposed to 0.0.0.0 | Bound to 127.0.0.1 |
+| **SSL** | None | Required (via reverse proxy) |
+| **Backups** | None | Automated daily |
+| **Monitoring** | Logs only | Logs + health checks + alerts |
+| **Restart Policy** | No | `unless-stopped` |
+| **Volume Mounts** | Source code | Data only |
 
 ---
 
