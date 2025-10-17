@@ -244,6 +244,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 # Enforce HTTPS in production
 if settings.env == "production":
     from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+
     app.add_middleware(HTTPSRedirectMiddleware)
     logger.info("HTTPS redirect middleware enabled for production")
 
@@ -259,6 +260,7 @@ if settings.jwt_secret_key:
 else:
     # Development: generate random key per session (not hardcoded)
     import secrets
+
     session_secret = secrets.token_urlsafe(32)
     logger.warning("⚠️  DEV MODE: Generated random session secret (won't persist across restarts)")
 

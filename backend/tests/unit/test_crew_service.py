@@ -50,8 +50,10 @@ class TestCrewService:
             status=AgentStatus.ACTIVE
         )
 
-        # Mock LLM instance
+        # Mock LLM instance with required attributes for CrewAI
         mock_llm = Mock()
+        mock_llm.supports_stop_words = True
+        mock_llm.model_name = "claude-3-5-sonnet-20241022"
 
         # Create CrewAI agent
         crew_agent = CrewService._create_crew_agent(agent, mock_llm)
@@ -180,6 +182,8 @@ class TestCrewServiceIntegration:
         # Configure mocks
         mock_llm_service.api_key = "test-api-key"
         mock_llm = Mock()
+        mock_llm.supports_stop_words = True
+        mock_llm.model_name = "claude-3-5-sonnet-20241022"
         mock_chat_anthropic.return_value = mock_llm
 
         # Mock Crew execution
@@ -220,6 +224,8 @@ class TestCrewServiceIntegration:
         # Configure mocks
         mock_llm_service.api_key = "test-api-key"
         mock_llm = Mock()
+        mock_llm.supports_stop_words = True
+        mock_llm.model_name = "claude-3-5-sonnet-20241022"
         mock_chat_anthropic.return_value = mock_llm
 
         # Mock Crew execution

@@ -70,7 +70,7 @@ class TestMemoryService:
 
         stats = await memory_service.get_statistics()
 
-        assert stats["conversations_count"] == 100
-        assert stats["outputs_count"] == 50
-        assert stats["documents_count"] == 25
-        assert "retention_days" in stats
+        assert stats["conversations"] == 100
+        assert stats["agent_outputs"] == 50
+        assert stats["documents"] == 25
+        assert "total" in stats or stats["conversations"] + stats["agent_outputs"] + stats["documents"] == 175

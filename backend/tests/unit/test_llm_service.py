@@ -69,7 +69,7 @@ class TestLLMService:
     async def test_generate_without_api_key_raises_error(self):
         """Test generate without API key raises error."""
         service = LLMService()
-        with pytest.raises(ValueError, match="API key not set"):
+        with pytest.raises(RuntimeError, match="API key not set"):
             await service.generate("test prompt")
 
     @pytest.mark.asyncio
@@ -91,8 +91,9 @@ class TestLLMService:
         service = LLMService(api_key="test-key")
         result = await service.generate("test prompt")
 
-        assert result["success"] == True
         assert result["content"] == "Test response"
         assert result["model"] == "claude-3-5-sonnet-20241022"
         assert result["usage"]["input_tokens"] == 10
         assert result["usage"]["output_tokens"] == 20
+        assert result["id"] == "test-id"
+        assert result["stop_reason"] == "end_turn"

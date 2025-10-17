@@ -37,7 +37,7 @@ class EncryptionService:
                 "ENCRYPTION_KEY environment variable is REQUIRED in production.\n"
                 "Without a persistent encryption key, all API keys will be lost on restart.\n"
                 "Generate one with:\n"
-                "  python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\"\n"
+                '  python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"\n'
                 "Then add to .env: ENCRYPTION_KEY=<generated-key>"
             )
 

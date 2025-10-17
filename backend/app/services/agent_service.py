@@ -126,9 +126,9 @@ class AgentService:
             # Escape SQL wildcards to prevent injection attacks
             escaped_search = (
                 search.replace("\\", "\\\\")
-                     .replace("%", "\\%")
-                     .replace("_", "\\_")
-                     .replace("[", "\\[")
+                .replace("%", "\\%")
+                .replace("_", "\\_")
+                .replace("[", "\\[")
             )
             search_filter = or_(
                 Agent.name.ilike(f"%{search}%"), Agent.description.ilike(f"%{search}%")
