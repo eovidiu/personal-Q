@@ -15,9 +15,10 @@ chromadb==0.5.18
 # LLM Integration
 anthropic==0.39.0
 
-# CrewAI
-# crewai==0.86.0  # Temporarily disabled - depends on crewai-tools which takes too long
-# crewai-tools>=0.17.0  # Temporarily disabled - takes too long to resolve dependencies
+# CrewAI - Multi-agent orchestration
+crewai==0.203.1
+langchain-anthropic==0.3.0  # Required for ChatAnthropic integration
+langchain-core==0.3.0  # Core LangChain components
 
 # Task Queue
 celery==5.4.0
