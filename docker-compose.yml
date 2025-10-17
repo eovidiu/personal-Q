@@ -32,6 +32,8 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+      # SECURITY FIX (MEDIUM-005): Require ENCRYPTION_KEY for persistent API key storage
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:?ERROR: ENCRYPTION_KEY environment variable is required for persistent API key storage}
     volumes:
       - backend_data:/app/data
       - ./backend:/app
