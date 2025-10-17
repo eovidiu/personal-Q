@@ -247,9 +247,18 @@ app.add_middleware(SecurityHeadersMiddleware)
 if settings.env == "production" and not settings.jwt_secret_key:
     raise ValueError("JWT_SECRET_KEY environment variable must be set in production")
 
+# SECURITY FIX (MEDIUM-002): Generate secure session secret instead of hardcoded fallback
+if settings.jwt_secret_key:
+    session_secret = settings.jwt_secret_key
+else:
+    # Development: generate random key per session (not hardcoded)
+    import secrets
+    session_secret = secrets.token_urlsafe(32)
+    logger.warning("⚠️  DEV MODE: Generated random session secret (won't persist across restarts)")
+
 app.add_middleware(
     SessionMiddleware,
-    secret_key=settings.jwt_secret_key or "dev-secret-key-for-local-only",
+    secret_key=session_secret,
     session_cookie="personal_q_session",
     max_age=3600,  # 1 hour
     same_site="lax",
