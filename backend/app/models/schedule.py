@@ -2,7 +2,7 @@
 Schedule model for agent task scheduling.
 """
 
-from sqlalchemy import Column, String, Text, DateTime, Boolean, ForeignKey, JSON
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -15,7 +15,9 @@ class Schedule(Base):
     __tablename__ = "schedules"
 
     id = Column(String, primary_key=True, index=True)
-    agent_id = Column(String, ForeignKey("agents.id", ondelete="CASCADE"), nullable=False, index=True)
+    agent_id = Column(
+        String, ForeignKey("agents.id", ondelete="CASCADE"), nullable=False, index=True
+    )
 
     # Schedule details
     name = Column(String, nullable=False)

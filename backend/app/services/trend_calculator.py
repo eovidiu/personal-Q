@@ -2,11 +2,12 @@
 
 from datetime import timedelta
 
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.agent import Agent
 from app.models.task import Task, TaskStatus
 from app.utils.datetime_utils import utcnow
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class TrendCalculator:

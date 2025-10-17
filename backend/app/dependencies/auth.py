@@ -7,9 +7,10 @@ import logging
 from typing import Dict, Optional
 
 import jwt
-from config.settings import settings
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+from config.settings import settings
 
 logger = logging.getLogger(__name__)
 

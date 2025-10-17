@@ -6,6 +6,14 @@ ABOUTME: Configures all routers, middleware, and lifecycle events.
 import logging
 from contextlib import asynccontextmanager
 
+from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from starlette.middleware.sessions import SessionMiddleware
+
 from app.db.database import close_db, init_db
 from app.exceptions import (
     AgentNotFoundException,
@@ -17,18 +25,12 @@ from app.exceptions import (
 from app.middleware.logging_middleware import RequestLoggingMiddleware
 from app.middleware.rate_limit import limiter
 from app.middleware.security_headers import SecurityHeadersMiddleware
-from app.routers import activities, agents, auth, metrics, tasks, websocket
+from app.routers import activities, agents, auth, metrics
 from app.routers import settings as settings_router
+from app.routers import tasks, websocket
 from app.services.cache_service import cache_service
 from app.utils.datetime_utils import utcnow
 from config.settings import settings
-from fastapi import FastAPI, Request, status
-from fastapi.exceptions import RequestValidationError
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from starlette.middleware.sessions import SessionMiddleware
 
 # Configure logging
 logging.basicConfig(

@@ -11,6 +11,6 @@ __all__ = [
     "request_id_var",
 ]
 
-from .rate_limit import limiter, get_rate_limit
-from .security_headers import SecurityHeadersMiddleware
 from .logging_middleware import RequestLoggingMiddleware, request_id_var
+from .rate_limit import get_rate_limit, limiter
+from .security_headers import SecurityHeadersMiddleware

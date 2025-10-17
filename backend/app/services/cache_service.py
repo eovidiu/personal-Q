@@ -3,13 +3,13 @@ ABOUTME: Redis caching service for performance optimization.
 ABOUTME: Provides async caching with TTL, decorators, and cache invalidation.
 """
 
+import hashlib
 import json
+import logging
 import pickle
-from typing import Optional, Any, Callable
 from datetime import timedelta
 from functools import wraps
-import hashlib
-import logging
+from typing import Any, Callable, Optional
 
 import redis.asyncio as redis
 
@@ -32,7 +32,7 @@ class CacheService:
                 encoding="utf-8",
                 decode_responses=False,  # Handle binary data
                 socket_connect_timeout=5,
-                socket_timeout=5
+                socket_timeout=5,
             )
             # Test connection
             await self._client.ping()
@@ -69,12 +69,7 @@ class CacheService:
 
         return None
 
-    async def set(
-        self,
-        key: str,
-        value: Any,
-        ttl: int = 300  # 5 minutes default
-    ):
+    async def set(self, key: str, value: Any, ttl: int = 300):  # 5 minutes default
         """
         Set value in cache with TTL.
 
@@ -87,11 +82,7 @@ class CacheService:
             return
 
         try:
-            await self._client.set(
-                key,
-                pickle.dumps(value),
-                ex=ttl
-            )
+            await self._client.set(key, pickle.dumps(value), ex=ttl)
         except Exception as e:
             logger.warning(f"Cache set error for key '{key}': {e}")
 
@@ -209,6 +200,7 @@ def cached(ttl: int = 300, prefix: str = "cache"):
         async def get_agent(agent_id: str):
             return await db.get(Agent, agent_id)
     """
+
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -231,10 +223,10 @@ def cached(ttl: int = 300, prefix: str = "cache"):
             return result
 
         return wrapper
+
     return decorator
 
 
 async def get_cache_service() -> CacheService:
     """Get cache service instance."""
     return cache_service
-

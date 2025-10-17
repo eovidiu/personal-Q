@@ -3,19 +3,21 @@ ABOUTME: Task API endpoints with rate limiting to control LLM costs.
 ABOUTME: Task creation and execution are heavily rate limited.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
-from typing import Optional, Dict
 import uuid
+from typing import Dict, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
-from app.schemas.task import TaskCreate, TaskUpdate, Task, TaskList
-from app.models.task import Task as TaskModel, TaskStatus, TaskPriority
-from app.models.agent import Agent
-from app.workers.tasks import execute_agent_task
-from app.middleware.rate_limit import limiter, get_rate_limit
 from app.dependencies.auth import get_current_user
+from app.middleware.rate_limit import get_rate_limit, limiter
+from app.models.agent import Agent
+from app.models.task import Task as TaskModel
+from app.models.task import TaskPriority, TaskStatus
+from app.schemas.task import Task, TaskCreate, TaskList, TaskUpdate
+from app.workers.tasks import execute_agent_task
 
 router = APIRouter()
 
@@ -26,7 +28,7 @@ async def create_task(
     request: Request,
     task_data: TaskCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: Dict = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user),
 ):
     """Create a new task and trigger execution (rate limited, requires authentication)."""
     # Verify agent exists
@@ -36,10 +38,7 @@ async def create_task(
         raise HTTPException(status_code=404, detail="Agent not found")
 
     # Create task
-    task = TaskModel(
-        id=str(uuid.uuid4()),
-        **task_data.model_dump()
-    )
+    task = TaskModel(id=str(uuid.uuid4()), **task_data.model_dump())
 
     db.add(task)
     await db.commit()
@@ -60,7 +59,7 @@ async def list_tasks(
     agent_id: Optional[str] = Query(None),
     status: Optional[TaskStatus] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: Dict = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user),
 ):
     """List tasks with filtering and pagination."""
     query = select(TaskModel)
@@ -86,19 +85,13 @@ async def list_tasks(
     total_pages = (total + page_size - 1) // page_size
 
     return TaskList(
-        tasks=list(tasks),
-        total=total,
-        page=page,
-        page_size=page_size,
-        total_pages=total_pages
+        tasks=list(tasks), total=total, page=page, page_size=page_size, total_pages=total_pages
     )
 
 
 @router.get("/{task_id}", response_model=Task)
 async def get_task(
-    task_id: str,
-    db: AsyncSession = Depends(get_db),
-    current_user: Dict = Depends(get_current_user)
+    task_id: str, db: AsyncSession = Depends(get_db), current_user: Dict = Depends(get_current_user)
 ):
     """Get task details (requires authentication)."""
     result = await db.execute(select(TaskModel).where(TaskModel.id == task_id))
@@ -115,7 +108,7 @@ async def update_task(
     task_id: str,
     task_data: TaskUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: Dict = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user),
 ):
     """Update task (requires authentication)."""
     result = await db.execute(select(TaskModel).where(TaskModel.id == task_id))

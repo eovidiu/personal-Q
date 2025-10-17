@@ -3,7 +3,7 @@ ABOUTME: API key storage model for external integrations with encrypted sensitiv
 ABOUTME: All credentials are encrypted at rest using Fernet symmetric encryption.
 """
 
-from sqlalchemy import Column, String, Text, DateTime, Boolean
+from sqlalchemy import Boolean, Column, DateTime, String, Text
 from sqlalchemy.sql import func
 
 from app.db.database import Base

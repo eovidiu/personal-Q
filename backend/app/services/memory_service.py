@@ -5,9 +5,9 @@ ABOUTME: All ChromaDB operations run in executor to avoid blocking event loop.
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
 import uuid
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
 
 from app.db.chroma_client import get_chroma_client
 from app.utils.datetime_utils import utcnow
@@ -26,11 +26,7 @@ class MemoryService:
         self.documents_collection = self.chroma.get_or_create_collection("documents")
 
     async def store_conversation(
-        self,
-        agent_id: str,
-        message: str,
-        role: str = "user",
-        metadata: Dict[str, Any] = None
+        self, agent_id: str, message: str, role: str = "user", metadata: Dict[str, Any] = None
     ) -> str:
         """
         Store conversation message in memory (async).
@@ -51,23 +47,16 @@ class MemoryService:
         await asyncio.to_thread(
             self.conversations_collection.add,
             documents=[message],
-            metadatas=[{
-                "agent_id": agent_id,
-                "role": role,
-                "timestamp": timestamp,
-                **(metadata or {})
-            }],
-            ids=[memory_id]
+            metadatas=[
+                {"agent_id": agent_id, "role": role, "timestamp": timestamp, **(metadata or {})}
+            ],
+            ids=[memory_id],
         )
 
         return memory_id
 
     async def store_agent_output(
-        self,
-        agent_id: str,
-        task_id: str,
-        output: str,
-        metadata: Dict[str, Any] = None
+        self, agent_id: str, task_id: str, output: str, metadata: Dict[str, Any] = None
     ) -> str:
         """
         Store agent output in memory (async).
@@ -88,22 +77,21 @@ class MemoryService:
         await asyncio.to_thread(
             self.outputs_collection.add,
             documents=[output],
-            metadatas=[{
-                "agent_id": agent_id,
-                "task_id": task_id,
-                "timestamp": timestamp,
-                **(metadata or {})
-            }],
-            ids=[memory_id]
+            metadatas=[
+                {
+                    "agent_id": agent_id,
+                    "task_id": task_id,
+                    "timestamp": timestamp,
+                    **(metadata or {}),
+                }
+            ],
+            ids=[memory_id],
         )
 
         return memory_id
 
     async def store_document(
-        self,
-        content: str,
-        source: str,
-        metadata: Dict[str, Any] = None
+        self, content: str, source: str, metadata: Dict[str, Any] = None
     ) -> str:
         """
         Store document for RAG (async).
@@ -123,21 +111,14 @@ class MemoryService:
         await asyncio.to_thread(
             self.documents_collection.add,
             documents=[content],
-            metadatas=[{
-                "source": source,
-                "timestamp": timestamp,
-                **(metadata or {})
-            }],
-            ids=[doc_id]
+            metadatas=[{"source": source, "timestamp": timestamp, **(metadata or {})}],
+            ids=[doc_id],
         )
 
         return doc_id
 
     async def search_conversations(
-        self,
-        query: str,
-        agent_id: Optional[str] = None,
-        limit: int = 5
+        self, query: str, agent_id: Optional[str] = None, limit: int = 5
     ) -> List[Dict[str, Any]]:
         """
         Search conversation history (async).
@@ -157,18 +138,20 @@ class MemoryService:
             self.conversations_collection.query,
             query_texts=[query],
             n_results=limit,
-            where=where_filter
+            where=where_filter,
         )
 
         # Format results
         conversations = []
         if results["documents"]:
             for i, doc in enumerate(results["documents"][0]):
-                conversations.append({
-                    "content": doc,
-                    "metadata": results["metadatas"][0][i] if results["metadatas"] else {},
-                    "distance": results["distances"][0][i] if results["distances"] else None
-                })
+                conversations.append(
+                    {
+                        "content": doc,
+                        "metadata": results["metadatas"][0][i] if results["metadatas"] else {},
+                        "distance": results["distances"][0][i] if results["distances"] else None,
+                    }
+                )
 
         return conversations
 
@@ -177,7 +160,7 @@ class MemoryService:
         query: str,
         agent_id: Optional[str] = None,
         task_id: Optional[str] = None,
-        limit: int = 5
+        limit: int = 5,
     ) -> List[Dict[str, Any]]:
         """
         Search agent outputs (async).
@@ -202,26 +185,24 @@ class MemoryService:
             self.outputs_collection.query,
             query_texts=[query],
             n_results=limit,
-            where=where_filter if where_filter else None
+            where=where_filter if where_filter else None,
         )
 
         # Format results
         outputs = []
         if results["documents"]:
             for i, doc in enumerate(results["documents"][0]):
-                outputs.append({
-                    "content": doc,
-                    "metadata": results["metadatas"][0][i] if results["metadatas"] else {},
-                    "distance": results["distances"][0][i] if results["distances"] else None
-                })
+                outputs.append(
+                    {
+                        "content": doc,
+                        "metadata": results["metadatas"][0][i] if results["metadatas"] else {},
+                        "distance": results["distances"][0][i] if results["distances"] else None,
+                    }
+                )
 
         return outputs
 
-    async def search_documents(
-        self,
-        query: str,
-        limit: int = 5
-    ) -> List[Dict[str, Any]]:
+    async def search_documents(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
         """
         Search documents for RAG (async).
 
@@ -234,27 +215,25 @@ class MemoryService:
         """
         # Run ChromaDB query in executor
         results = await asyncio.to_thread(
-            self.documents_collection.query,
-            query_texts=[query],
-            n_results=limit
+            self.documents_collection.query, query_texts=[query], n_results=limit
         )
 
         # Format results
         documents = []
         if results["documents"]:
             for i, doc in enumerate(results["documents"][0]):
-                documents.append({
-                    "content": doc,
-                    "metadata": results["metadatas"][0][i] if results["metadatas"] else {},
-                    "distance": results["distances"][0][i] if results["distances"] else None
-                })
+                documents.append(
+                    {
+                        "content": doc,
+                        "metadata": results["metadatas"][0][i] if results["metadatas"] else {},
+                        "distance": results["distances"][0][i] if results["distances"] else None,
+                    }
+                )
 
         return documents
 
     async def get_conversation_history(
-        self,
-        agent_id: str,
-        limit: int = 10
+        self, agent_id: str, limit: int = 10
     ) -> List[Dict[str, Any]]:
         """
         Get recent conversation history for agent (async).
@@ -268,20 +247,20 @@ class MemoryService:
         """
         # Run ChromaDB query in executor
         results = await asyncio.to_thread(
-            self.conversations_collection.get,
-            where={"agent_id": agent_id},
-            limit=limit
+            self.conversations_collection.get, where={"agent_id": agent_id}, limit=limit
         )
 
         # Format results
         conversations = []
         if results["documents"]:
             for i, doc in enumerate(results["documents"]):
-                conversations.append({
-                    "id": results["ids"][i],
-                    "content": doc,
-                    "metadata": results["metadatas"][i] if results["metadatas"] else {}
-                })
+                conversations.append(
+                    {
+                        "id": results["ids"][i],
+                        "content": doc,
+                        "metadata": results["metadatas"][i] if results["metadatas"] else {},
+                    }
+                )
 
         return conversations
 
@@ -324,6 +303,7 @@ class MemoryService:
         Returns:
             Statistics about stored memories
         """
+
         def _get_counts():
             conv_count = self.conversations_collection.count()
             output_count = self.outputs_collection.count()
@@ -337,7 +317,7 @@ class MemoryService:
             "conversations": conv_count,
             "agent_outputs": output_count,
             "documents": doc_count,
-            "total": conv_count + output_count + doc_count
+            "total": conv_count + output_count + doc_count,
         }
 
 

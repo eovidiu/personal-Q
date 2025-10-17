@@ -3,16 +3,17 @@ ABOUTME: Agent API endpoints with rate limiting for write operations.
 ABOUTME: Agent creation and deletion are rate limited to prevent abuse.
 """
 
+from typing import Dict, List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional, List, Dict
 
 from app.db.database import get_db
-from app.schemas.agent import AgentCreate, AgentUpdate, AgentStatusUpdate, Agent, AgentList
-from app.models.agent import AgentStatus, AgentType
-from app.services.agent_service import AgentService
-from app.middleware.rate_limit import limiter, get_rate_limit
 from app.dependencies.auth import get_current_user
+from app.middleware.rate_limit import get_rate_limit, limiter
+from app.models.agent import AgentStatus, AgentType
+from app.schemas.agent import Agent, AgentCreate, AgentList, AgentStatusUpdate, AgentUpdate
+from app.services.agent_service import AgentService
 
 router = APIRouter()
 
@@ -23,7 +24,7 @@ async def create_agent(
     request: Request,
     agent_data: AgentCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: Dict = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user),
 ):
     """Create a new agent (rate limited, requires authentication)."""
     try:
@@ -42,7 +43,7 @@ async def list_agents(
     search: Optional[str] = Query(None, max_length=100, description="Search in name/description"),
     tags: Optional[str] = Query(None, max_length=500, description="Comma-separated tags to filter"),
     db: AsyncSession = Depends(get_db),
-    current_user: Dict = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user),
 ):
     """
     List agents with filtering and pagination (requires authentication).
@@ -64,7 +65,9 @@ async def list_agents(
     # Parse tags if provided
     tag_list = None
     if tags:
-        tag_list = [tag.strip()[:50] for tag in tags.split(",") if tag.strip()][:20]  # Max 20 tags, 50 chars each
+        tag_list = [tag.strip()[:50] for tag in tags.split(",") if tag.strip()][
+            :20
+        ]  # Max 20 tags, 50 chars each
 
     agents, total = await AgentService.list_agents(
         db,
@@ -73,17 +76,13 @@ async def list_agents(
         status=status,
         agent_type=agent_type,
         search=search,
-        tags=tag_list
+        tags=tag_list,
     )
 
     total_pages = (total + page_size - 1) // page_size
 
     return AgentList(
-        agents=agents,
-        total=total,
-        page=page,
-        page_size=page_size,
-        total_pages=total_pages
+        agents=agents, total=total, page=page, page_size=page_size, total_pages=total_pages
     )
 
 
@@ -91,7 +90,7 @@ async def list_agents(
 async def get_agent(
     agent_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: Dict = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user),
 ):
     """Get agent details by ID (requires authentication)."""
     agent = await AgentService.get_agent(db, agent_id)
@@ -105,7 +104,7 @@ async def update_agent(
     agent_id: str,
     agent_data: AgentUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: Dict = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user),
 ):
     """Update agent configuration (requires authentication)."""
     try:
@@ -122,7 +121,7 @@ async def update_agent_status(
     agent_id: str,
     status_data: AgentStatusUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: Dict = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user),
 ):
     """Update agent status (requires authentication)."""
     agent = await AgentService.update_agent_status(db, agent_id, status_data)
@@ -137,7 +136,7 @@ async def delete_agent(
     request: Request,
     agent_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: Dict = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user),
 ):
     """Delete an agent (rate limited, requires authentication)."""
     deleted = await AgentService.delete_agent(db, agent_id)

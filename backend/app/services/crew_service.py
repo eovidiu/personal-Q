@@ -3,8 +3,9 @@ ABOUTME: CrewAI service for multi-agent orchestration and collaboration.
 ABOUTME: Uses LangChain-compatible ChatAnthropic for proper integration.
 """
 
+from typing import Any, Dict, List, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Dict, Any, Optional
 
 from app.models.agent import Agent, AgentType
 from app.services.llm_service import llm_service
@@ -12,8 +13,11 @@ from config.settings import settings
 
 # Try to import CrewAI, but provide stubs if not available
 try:
-    from crewai import Agent as CrewAgent, Task as CrewTask, Crew, Process
+    from crewai import Agent as CrewAgent
+    from crewai import Crew, Process
+    from crewai import Task as CrewTask
     from langchain_anthropic import ChatAnthropic
+
     CREWAI_AVAILABLE = True
 except ImportError:
     CREWAI_AVAILABLE = False
@@ -35,7 +39,7 @@ class CrewService:
             AgentType.CONVERSATIONAL: "Customer Support Specialist",
             AgentType.ANALYTICAL: "Data Analyst and Researcher",
             AgentType.CREATIVE: "Creative Content Writer",
-            AgentType.AUTOMATION: "Automation and Workflow Specialist"
+            AgentType.AUTOMATION: "Automation and Workflow Specialist",
         }
         return role_mapping.get(agent_type, "General Purpose Assistant")
 
@@ -59,15 +63,12 @@ class CrewService:
             backstory=agent.system_prompt,
             verbose=True,
             allow_delegation=True,
-            llm=llm_instance
+            llm=llm_instance,
         )
 
     @staticmethod
     async def execute_agent_task(
-        db: AsyncSession,
-        agent: Agent,
-        task_description: str,
-        task_input: Dict[str, Any] = None
+        db: AsyncSession, agent: Agent, task_description: str, task_input: Dict[str, Any] = None
     ) -> Dict[str, Any]:
         """
         Execute a task with a single agent.
@@ -86,7 +87,7 @@ class CrewService:
                 "success": False,
                 "error": "CrewAI is not available. Please install crewai and crewai-tools packages.",
                 "agent_id": agent.id,
-                "task_description": task_description
+                "task_description": task_description,
             }
 
         # Configure LLM for agent using LangChain-compatible ChatAnthropic
@@ -95,7 +96,7 @@ class CrewService:
                 "success": False,
                 "error": "Anthropic API key not configured. Please set API key in Settings.",
                 "agent_id": agent.id,
-                "task_description": task_description
+                "task_description": task_description,
             }
 
         llm = ChatAnthropic(
@@ -103,7 +104,7 @@ class CrewService:
             anthropic_api_key=llm_service.api_key,
             temperature=agent.temperature or settings.default_temperature,
             max_tokens=agent.max_tokens or settings.default_max_tokens,
-            streaming=True  # Enable streaming for real-time responses
+            streaming=True,  # Enable streaming for real-time responses
         )
 
         # Create CrewAI agent
@@ -113,15 +114,12 @@ class CrewService:
         crew_task = CrewTask(
             description=task_description,
             agent=crew_agent,
-            expected_output="Detailed result of the task execution"
+            expected_output="Detailed result of the task execution",
         )
 
         # Create crew with single agent
         crew = Crew(
-            agents=[crew_agent],
-            tasks=[crew_task],
-            process=Process.sequential,
-            verbose=True
+            agents=[crew_agent], tasks=[crew_task], process=Process.sequential, verbose=True
         )
 
         # Execute
@@ -132,7 +130,7 @@ class CrewService:
                 "success": True,
                 "result": str(result),
                 "agent_id": agent.id,
-                "task_description": task_description
+                "task_description": task_description,
             }
 
         except Exception as e:
@@ -140,7 +138,7 @@ class CrewService:
                 "success": False,
                 "error": str(e),
                 "agent_id": agent.id,
-                "task_description": task_description
+                "task_description": task_description,
             }
 
     @staticmethod
@@ -148,7 +146,7 @@ class CrewService:
         db: AsyncSession,
         agents: List[Agent],
         task_descriptions: List[str],
-        process: str = "sequential"
+        process: str = "sequential",
     ) -> Dict[str, Any]:
         """
         Execute tasks with multiple agents collaborating.
@@ -166,7 +164,7 @@ class CrewService:
             return {
                 "success": False,
                 "error": "CrewAI is not available. Please install crewai and crewai-tools packages.",
-                "agents": [{"id": a.id, "name": a.name} for a in agents]
+                "agents": [{"id": a.id, "name": a.name} for a in agents],
             }
 
         if len(agents) != len(task_descriptions):
@@ -176,7 +174,7 @@ class CrewService:
             return {
                 "success": False,
                 "error": "Anthropic API key not configured. Please set API key in Settings.",
-                "agents": [{"id": a.id, "name": a.name} for a in agents]
+                "agents": [{"id": a.id, "name": a.name} for a in agents],
             }
 
         # Use first agent's config as default for multi-agent crew
@@ -186,21 +184,16 @@ class CrewService:
             anthropic_api_key=llm_service.api_key,
             temperature=primary_agent.temperature or settings.default_temperature,
             max_tokens=primary_agent.max_tokens or settings.default_max_tokens,
-            streaming=True
+            streaming=True,
         )
 
         # Create CrewAI agents
-        crew_agents = [
-            CrewService._create_crew_agent(agent, llm)
-            for agent in agents
-        ]
+        crew_agents = [CrewService._create_crew_agent(agent, llm) for agent in agents]
 
         # Create tasks
         crew_tasks = [
             CrewTask(
-                description=task_desc,
-                agent=crew_agents[i],
-                expected_output="Detailed task result"
+                description=task_desc, agent=crew_agents[i], expected_output="Detailed task result"
             )
             for i, task_desc in enumerate(task_descriptions)
         ]
@@ -209,12 +202,7 @@ class CrewService:
         process_type = Process.hierarchical if process == "hierarchical" else Process.sequential
 
         # Create crew
-        crew = Crew(
-            agents=crew_agents,
-            tasks=crew_tasks,
-            process=process_type,
-            verbose=True
-        )
+        crew = Crew(agents=crew_agents, tasks=crew_tasks, process=process_type, verbose=True)
 
         # Execute
         try:
@@ -224,14 +212,14 @@ class CrewService:
                 "success": True,
                 "result": str(result),
                 "agents": [{"id": a.id, "name": a.name} for a in agents],
-                "process": process
+                "process": process,
             }
 
         except Exception as e:
             return {
                 "success": False,
                 "error": str(e),
-                "agents": [{"id": a.id, "name": a.name} for a in agents]
+                "agents": [{"id": a.id, "name": a.name} for a in agents],
             }
 
     @staticmethod

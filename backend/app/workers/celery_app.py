@@ -2,10 +2,10 @@
 Celery application configuration.
 """
 
-from celery import Celery
-from celery.schedules import crontab
 import sys
 
+from celery import Celery
+from celery.schedules import crontab
 
 from config.settings import settings
 
@@ -14,7 +14,7 @@ celery_app = Celery(
     "personal_q",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["app.workers.tasks"]
+    include=["app.workers.tasks"],
 )
 
 # Celery configuration
