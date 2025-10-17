@@ -27,6 +27,11 @@ async def test_create_agent_endpoint(test_app):
             }
         )
 
+    # Debug: print response if not 201
+    if response.status_code != 201:
+        print(f"Response status: {response.status_code}")
+        print(f"Response body: {response.text}")
+
     assert response.status_code == 201
     data = response.json()
     assert data["name"] == "API Test Agent"
