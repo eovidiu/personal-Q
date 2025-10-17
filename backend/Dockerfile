@@ -10,6 +10,14 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Configure pip for better dependency resolution
+ENV PIP_DEFAULT_TIMEOUT=300
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Upgrade pip, setuptools, and wheel for better dependency handling
+RUN pip install --no-cache-dir --upgrade pip==24.3.1 setuptools==75.6.0 wheel==0.45.0
+
 # Copy package configuration first
 COPY pyproject.toml setup.py ./
 
@@ -19,7 +27,8 @@ COPY config ./config
 COPY migrations ./migrations
 
 # Install package in editable mode with dependencies
-RUN pip install --no-cache-dir -e .
+# Increased timeout for CrewAI dependency resolution
+RUN pip install --no-cache-dir -e . --timeout 300
 
 # Create data directories
 RUN mkdir -p /app/data /app/data/chromadb
