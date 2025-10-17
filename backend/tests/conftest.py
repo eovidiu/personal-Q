@@ -9,7 +9,15 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.pool import StaticPool
 import sys
 import os
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock, patch
+
+# Mock the rate limiter BEFORE any app imports to avoid Redis connection attempts
+mock_limiter = Mock()
+mock_limiter.limit = lambda *args, **kwargs: lambda func: func  # Bypass decorator
+
+# Apply the patch at module level
+limiter_patcher = patch('app.middleware.rate_limit.limiter', mock_limiter)
+limiter_patcher.start()
 
 from fastapi import FastAPI
 from app.db.database import Base, get_db
@@ -124,10 +132,7 @@ async def test_app(test_engine, test_session):
 
     app.dependency_overrides[get_current_user] = _mock_current_user
 
-    # Add mock rate limiter to avoid Redis dependency in tests
-    from unittest.mock import Mock
-    mock_limiter = Mock()
-    mock_limiter.limit = lambda *args, **kwargs: lambda func: func  # Bypass decorator
+    # Set the already-mocked limiter to app.state for consistency
     app.state.limiter = mock_limiter
 
     return app
