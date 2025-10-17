@@ -24,8 +24,8 @@ class TaskBase(BaseModel):
 
     @field_validator("title", "description")
     @classmethod
-    def sanitize_html(cls, v):
-        """Escape HTML in text fields to prevent XSS."""
+    def sanitize_title(cls, v):
+        """Escape HTML in title to prevent XSS."""
         if v:
             return html.escape(v.strip())
         return v

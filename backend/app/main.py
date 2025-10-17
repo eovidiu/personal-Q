@@ -241,6 +241,12 @@ app.add_middleware(RequestLoggingMiddleware)
 # Add security headers middleware
 app.add_middleware(SecurityHeadersMiddleware)
 
+# Enforce HTTPS in production
+if settings.env == "production":
+    from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+    app.add_middleware(HTTPSRedirectMiddleware)
+    logger.info("HTTPS redirect middleware enabled for production")
+
 # Add session middleware for OAuth (required by authlib)
 # Use JWT_SECRET_KEY for session encryption
 # Require JWT_SECRET_KEY in production for security

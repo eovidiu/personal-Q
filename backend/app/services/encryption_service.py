@@ -23,6 +23,9 @@ class EncryptionService:
 
     def _initialize(self):
         """Initialize the cipher with encryption key."""
+        # Import here to avoid circular dependency
+        from config.settings import settings
+
         # Get encryption key from environment
         key_str = os.getenv("ENCRYPTION_KEY")
         env = os.getenv("ENV", "development")
@@ -56,7 +59,7 @@ class EncryptionService:
             logger.info("Encryption service initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize encryption service: {e}")
-            raise ValueError(f"Invalid encryption key: {e}")
+            raise ValueError(f"Invalid ENCRYPTION_KEY format: {e}")
 
     @property
     def cipher(self) -> Fernet:

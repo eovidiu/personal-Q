@@ -39,7 +39,7 @@ class AgentBase(BaseModel):
     @field_validator("system_prompt")
     @classmethod
     def validate_system_prompt(cls, v):
-        """Validate and check system prompt for potential injection."""
+        """Validate and sanitize system prompt against injection attacks."""
         if not v:
             return v
 
