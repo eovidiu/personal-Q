@@ -63,8 +63,27 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> list[str]:
-        """Parse CORS origins string into list."""
-        return [origin.strip() for origin in self.cors_origins.split(",")]
+        """Parse CORS origins string into list with production validation."""
+        origins = [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+        # SECURITY FIX (HIGH-003): Validate CORS origins in production
+        # Prevent developer localhost origins from leaking into production
+        if self.env == "production":
+            # Check for localhost/127.0.0.1 in production
+            localhost_origins = [o for o in origins if "localhost" in o or "127.0.0.1" in o]
+            if localhost_origins:
+                raise ValueError(
+                    f"CORS_ORIGINS contains localhost in production: {localhost_origins}\n"
+                    "Please set CORS_ORIGINS to your production domain(s)."
+                )
+
+            # Warn about wildcard
+            if "*" in origins:
+                if len(origins) > 1:
+                    raise ValueError("Cannot use wildcard '*' with other CORS origins")
+                logger.warning("⚠️  WILDCARD CORS: All origins allowed (security risk)")
+
+        return origins
 
 
 # Global settings instance

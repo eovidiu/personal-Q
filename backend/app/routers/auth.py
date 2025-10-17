@@ -3,37 +3,37 @@ ABOUTME: Google OAuth authentication router for single-user system.
 ABOUTME: Implements login, callback, logout, and session verification.
 """
 
-from fastapi import APIRouter, Request, HTTPException, Depends, status
-from fastapi.responses import RedirectResponse, JSONResponse
-from authlib.integrations.starlette_client import OAuth
-from starlette.config import Config
-from typing import Optional
 import logging
 from datetime import timedelta
-import jwt
+from typing import Optional
 
-from config.settings import settings
+import jwt
 from app.utils.datetime_utils import utcnow
+from authlib.integrations.starlette_client import OAuth
+from config.settings import settings
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import JSONResponse, RedirectResponse
+from starlette.config import Config
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 # Configure OAuth
-config = Config(environ={
-    "GOOGLE_CLIENT_ID": settings.google_client_id or "",
-    "GOOGLE_CLIENT_SECRET": settings.google_client_secret or ""
-})
+config = Config(
+    environ={
+        "GOOGLE_CLIENT_ID": settings.google_client_id or "",
+        "GOOGLE_CLIENT_SECRET": settings.google_client_secret or "",
+    }
+)
 
 oauth = OAuth(config)
 
 # Register Google OAuth provider
 oauth.register(
-    name='google',
-    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
-    client_kwargs={
-        'scope': 'openid email profile'
-    }
+    name="google",
+    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+    client_kwargs={"scope": "openid email profile"},
 )
 
 
@@ -52,7 +52,7 @@ def create_access_token(email: str) -> str:
         "sub": email,
         "email": email,
         "iat": now,
-        "exp": now + timedelta(hours=24)  # 24 hour expiry
+        "exp": now + timedelta(hours=24),  # 24 hour expiry
     }
 
     token = jwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
@@ -71,12 +71,14 @@ def verify_access_token(token: str) -> Optional[dict]:
     """
     try:
         payload = jwt.decode(token, settings.jwt_secret_key, algorithms=["HS256"])
-        
+
         # Verify email is the allowed user
         if payload.get("email") != settings.allowed_email:
-            logger.warning(f"Token email mismatch: {payload.get('email')} != {settings.allowed_email}")
+            logger.warning(
+                f"Token email mismatch: {payload.get('email')} != {settings.allowed_email}"
+            )
             return None
-        
+
         return payload
     except jwt.ExpiredSignatureError:
         logger.warning("Token expired")
@@ -96,11 +98,11 @@ async def login(request: Request):
     if not settings.google_client_id or not settings.google_client_secret:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="OAuth not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET."
+            detail="OAuth not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
         )
 
     # Redirect to Google OAuth
-    redirect_uri = request.url_for('auth_callback')
+    redirect_uri = request.url_for("auth_callback")
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 
@@ -114,22 +116,24 @@ async def auth_callback(request: Request):
     try:
         # Get OAuth token from Google
         token = await oauth.google.authorize_access_token(request)
-        
+
         # Get user info
-        user_info = token.get('userinfo')
+        user_info = token.get("userinfo")
         if not user_info:
             # Fallback to userinfo endpoint
-            resp = await oauth.google.get('https://www.googleapis.com/oauth2/v3/userinfo', token=token)
+            resp = await oauth.google.get(
+                "https://www.googleapis.com/oauth2/v3/userinfo", token=token
+            )
             user_info = resp.json()
 
-        email = user_info.get('email')
-        
+        email = user_info.get("email")
+
         # Verify email matches allowed user
         if email != settings.allowed_email:
             logger.warning(f"Unauthorized login attempt from {email}")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Access denied. Only {settings.allowed_email} is authorized."
+                detail=f"Access denied. Only {settings.allowed_email} is authorized.",
             )
 
         # Log successful auth
@@ -139,9 +143,11 @@ async def auth_callback(request: Request):
         access_token = create_access_token(email)
 
         # Redirect to frontend with token
-        frontend_url = settings.cors_origins_list[0] if settings.cors_origins_list else "http://localhost:5173"
+        frontend_url = (
+            settings.cors_origins_list[0] if settings.cors_origins_list else "http://localhost:5173"
+        )
         redirect_url = f"{frontend_url}/?token={access_token}"
-        
+
         return RedirectResponse(url=redirect_url)
 
     except HTTPException:
@@ -150,7 +156,7 @@ async def auth_callback(request: Request):
         logger.error(f"OAuth callback failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Authentication failed. Please try again."
+            detail="Authentication failed. Please try again.",
         )
 
 
@@ -174,24 +180,17 @@ async def get_current_user(request: Request):
     # Get token from Authorization header
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     token = auth_header.split(" ")[1]
     payload = verify_access_token(token)
 
     if not payload:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token"
         )
 
-    return {
-        "email": payload.get("email"),
-        "authenticated": True
-    }
+    return {"email": payload.get("email"), "authenticated": True}
 
 
 @router.get("/verify")
@@ -212,8 +211,4 @@ async def verify_token_endpoint(request: Request):
     if not payload:
         return {"valid": False, "message": "Invalid or expired token"}
 
-    return {
-        "valid": True,
-        "email": payload.get("email")
-    }
-
+    return {"valid": True, "email": payload.get("email")}

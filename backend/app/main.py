@@ -17,8 +17,9 @@ from app.exceptions import (
 from app.middleware.logging_middleware import RequestLoggingMiddleware
 from app.middleware.rate_limit import limiter
 from app.middleware.security_headers import SecurityHeadersMiddleware
-from app.routers import activities, agents, auth, metrics, tasks, websocket
+from app.routers import activities, agents, auth, metrics
 from app.routers import settings as settings_router
+from app.routers import tasks, websocket
 from app.services.cache_service import cache_service
 from app.utils.datetime_utils import utcnow
 from config.settings import settings
@@ -252,9 +253,18 @@ if settings.env == "production":
 if settings.env == "production" and not settings.jwt_secret_key:
     raise ValueError("JWT_SECRET_KEY environment variable must be set in production")
 
+# SECURITY FIX (MEDIUM-002): Generate secure session secret instead of hardcoded fallback
+if settings.jwt_secret_key:
+    session_secret = settings.jwt_secret_key
+else:
+    # Development: generate random key per session (not hardcoded)
+    import secrets
+    session_secret = secrets.token_urlsafe(32)
+    logger.warning("⚠️  DEV MODE: Generated random session secret (won't persist across restarts)")
+
 app.add_middleware(
     SessionMiddleware,
-    secret_key=settings.jwt_secret_key or "dev-secret-key-for-local-only",
+    secret_key=session_secret,
     session_cookie="personal_q_session",
     max_age=3600,  # 1 hour
     same_site="lax",

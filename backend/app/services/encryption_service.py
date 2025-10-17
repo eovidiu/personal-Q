@@ -3,10 +3,11 @@ ABOUTME: Encryption service for securing sensitive data at rest using Fernet sym
 ABOUTME: All API keys and secrets are encrypted before storage in database.
 """
 
-import os
 import logging
-from cryptography.fernet import Fernet
+import os
 from typing import Optional
+
+from cryptography.fernet import Fernet
 
 logger = logging.getLogger(__name__)
 
@@ -27,26 +28,30 @@ class EncryptionService:
 
         # Get encryption key from environment
         key_str = os.getenv("ENCRYPTION_KEY")
+        env = os.getenv("ENV", "development")
+
+        # SECURITY FIX (HIGH-002): In production, ENCRYPTION_KEY is MANDATORY
+        # Without a persistent encryption key, all API keys will be lost on restart
+        if not key_str and env == "production":
+            raise ValueError(
+                "ENCRYPTION_KEY environment variable is REQUIRED in production.\n"
+                "Without a persistent encryption key, all API keys will be lost on restart.\n"
+                "Generate one with:\n"
+                "  python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\"\n"
+                "Then add to .env: ENCRYPTION_KEY=<generated-key>"
+            )
 
         if not key_str:
-            if settings.env == "production":
-                # FAIL HARD in production - don't start without encryption key
-                raise ValueError(
-                    "ENCRYPTION_KEY environment variable is required in production.\n"
-                    "Generate a key with:\n"
-                    "  python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'\n"
-                    "Then add to .env file:\n"
-                    "  ENCRYPTION_KEY=<generated-key>"
-                )
-            else:
-                # Development: Generate temporary key with BIG warning
-                logger.error("=" * 80)
-                logger.error("CRITICAL: ENCRYPTION_KEY not set in environment!")
-                logger.error("All encrypted data will be LOST on restart!")
-                logger.error("=" * 80)
-                key_str = Fernet.generate_key().decode()
-                logger.error(f"Temporary encryption key generated: {key_str}")
-                logger.error("Add this to your .env file to persist data across restarts")
+            # Development mode: generate ephemeral key
+            logger.warning("=" * 80)
+            logger.warning("⚠️  DEVELOPMENT MODE: Generating ephemeral encryption key")
+            logger.warning("⚠️  API keys will be LOST on restart!")
+            key_str = Fernet.generate_key().decode()
+            logger.warning("⚠️  Add to .env for persistence: ENCRYPTION_KEY=<generated-key>")
+            logger.warning("⚠️  (Key not logged for security - generate your own)")
+            logger.warning("=" * 80)
+        else:
+            logger.info("✓ Using persistent ENCRYPTION_KEY from environment")
 
         try:
             self._key = key_str.encode() if isinstance(key_str, str) else key_str
@@ -75,9 +80,9 @@ class EncryptionService:
         """
         if plaintext is None or plaintext == "":
             return None
-        
+
         try:
-            encrypted = self.cipher.encrypt(plaintext.encode('utf-8'))
+            encrypted = self.cipher.encrypt(plaintext.encode("utf-8"))
             return encrypted
         except Exception as e:
             logger.error(f"Encryption failed: {e}")
@@ -95,10 +100,10 @@ class EncryptionService:
         """
         if ciphertext is None:
             return None
-        
+
         try:
             decrypted = self.cipher.decrypt(ciphertext)
-            return decrypted.decode('utf-8')
+            return decrypted.decode("utf-8")
         except Exception as e:
             logger.error(f"Decryption failed: {e}")
             raise
@@ -112,7 +117,7 @@ class EncryptionService:
             Base64-encoded encryption key as string
         """
         key = Fernet.generate_key()
-        return key.decode('utf-8')
+        return key.decode("utf-8")
 
 
 # Global encryption service instance
@@ -122,4 +127,3 @@ encryption_service = EncryptionService()
 def get_encryption_service() -> EncryptionService:
     """Get encryption service instance."""
     return encryption_service
-

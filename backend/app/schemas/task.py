@@ -2,27 +2,27 @@
 Pydantic schemas for Task model with input validation and sanitization.
 """
 
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional, Dict, Any, List
-from datetime import datetime
-import json
 import html
+import json
 import logging
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from app.models.task import TaskStatus, TaskPriority
-from app.services.prompt_sanitizer import PromptSanitizer
+from app.models.task import TaskPriority, TaskStatus
+from pydantic import BaseModel, Field, field_validator
 
 logger = logging.getLogger(__name__)
 
 
 class TaskBase(BaseModel):
     """Base schema for Task with validation."""
+
     title: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = Field(None, max_length=5000)
     priority: TaskPriority = TaskPriority.MEDIUM
     input_data: Dict[str, Any] = Field(default_factory=dict)
-    
-    @field_validator('title')
+
+    @field_validator("title", "description")
     @classmethod
     def sanitize_title(cls, v):
         """Escape HTML in title to prevent XSS."""
@@ -30,21 +30,7 @@ class TaskBase(BaseModel):
             return html.escape(v.strip())
         return v
 
-    @field_validator('description')
-    @classmethod
-    def sanitize_description(cls, v):
-        """Sanitize task description for LLM safety against prompt injection."""
-        if not v:
-            return v
-
-        try:
-            # Task descriptions go to LLM - MUST sanitize for injection
-            sanitized = PromptSanitizer.sanitize(v, max_length=5000)
-            return sanitized
-        except ValueError as e:
-            raise ValueError(f"Task description rejected: {e}")
-    
-    @field_validator('input_data')
+    @field_validator("input_data")
     @classmethod
     def validate_input_data(cls, v):
         """Validate size of input_data to prevent abuse."""
@@ -53,17 +39,19 @@ class TaskBase(BaseModel):
         # Limit size of input_data to 10KB
         json_str = json.dumps(v)
         if len(json_str) > 10000:
-            raise ValueError('input_data too large (max 10KB)')
+            raise ValueError("input_data too large (max 10KB)")
         return v
 
 
 class TaskCreate(TaskBase):
     """Schema for creating a task."""
+
     agent_id: str
 
 
 class TaskUpdate(BaseModel):
     """Schema for updating a task."""
+
     title: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     priority: Optional[TaskPriority] = None
@@ -72,6 +60,7 @@ class TaskUpdate(BaseModel):
 
 class Task(TaskBase):
     """Schema for Task response."""
+
     id: str
     agent_id: str
     status: TaskStatus
@@ -92,6 +81,7 @@ class Task(TaskBase):
 
 class TaskList(BaseModel):
     """Schema for paginated task list."""
+
     tasks: List[Task]
     total: int
     page: int

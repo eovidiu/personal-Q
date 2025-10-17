@@ -2,16 +2,17 @@
 Task database model.
 """
 
-from sqlalchemy import Column, String, Text, DateTime, Enum, JSON, ForeignKey, Integer
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 import enum
 
 from app.db.database import Base
+from sqlalchemy import JSON, Column, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
 
 class TaskStatus(str, enum.Enum):
     """Task status enum."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -21,6 +22,7 @@ class TaskStatus(str, enum.Enum):
 
 class TaskPriority(str, enum.Enum):
     """Task priority enum."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -33,7 +35,9 @@ class Task(Base):
     __tablename__ = "tasks"
 
     id = Column(String, primary_key=True, index=True)
-    agent_id = Column(String, ForeignKey("agents.id", ondelete="CASCADE"), nullable=False, index=True)
+    agent_id = Column(
+        String, ForeignKey("agents.id", ondelete="CASCADE"), nullable=False, index=True
+    )
 
     # Task details
     title = Column(String, nullable=False)

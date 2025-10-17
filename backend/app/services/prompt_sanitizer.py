@@ -3,8 +3,8 @@ ABOUTME: Prompt sanitization service to prevent LLM prompt injection attacks.
 ABOUTME: Validates and sanitizes user inputs before sending to LLM services.
 """
 
-import re
 import logging
+import re
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -57,15 +57,14 @@ class PromptSanitizer:
             if re.search(pattern, text, re.IGNORECASE):
                 logger.warning(f"Potential prompt injection detected: {pattern}")
                 raise ValueError(
-                    "Potential prompt injection detected. "
-                    "Please rephrase your input."
+                    "Potential prompt injection detected. " "Please rephrase your input."
                 )
 
         # Remove control characters except newlines and tabs
-        sanitized = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', text)
+        sanitized = re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]", "", text)
 
         # Normalize excessive whitespace
-        sanitized = re.sub(r'\s+', ' ', sanitized).strip()
+        sanitized = re.sub(r"\s+", " ", sanitized).strip()
 
         return sanitized
 
@@ -108,7 +107,7 @@ class PromptSanitizer:
             raise ValueError("Agent name must be 1-100 characters")
 
         # Only allow alphanumeric, spaces, hyphens, underscores
-        if not re.match(r'^[\w\s\-]+$', name):
+        if not re.match(r"^[\w\s\-]+$", name):
             raise ValueError(
                 "Name can only contain letters, numbers, spaces, hyphens, and underscores"
             )
@@ -133,7 +132,7 @@ class PromptSanitizer:
             raise ValueError("Description must be 1-1000 characters")
 
         # Remove potential HTML/script tags
-        cleaned = re.sub(r'<[^>]+>', '', description)
+        cleaned = re.sub(r"<[^>]+>", "", description)
 
         # Apply standard sanitization
         return PromptSanitizer.sanitize(cleaned, max_length=1000)

@@ -2,16 +2,17 @@
 Activity log database model.
 """
 
-from sqlalchemy import Column, String, Text, DateTime, Enum, JSON, ForeignKey
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 import enum
 
 from app.db.database import Base
+from sqlalchemy import JSON, Column, DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
 
 class ActivityType(str, enum.Enum):
     """Activity type enum."""
+
     AGENT_CREATED = "agent_created"
     AGENT_UPDATED = "agent_updated"
     AGENT_DELETED = "agent_deleted"
@@ -28,6 +29,7 @@ class ActivityType(str, enum.Enum):
 
 class ActivityStatus(str, enum.Enum):
     """Activity status/outcome."""
+
     SUCCESS = "success"
     ERROR = "error"
     INFO = "info"
@@ -40,7 +42,9 @@ class Activity(Base):
     __tablename__ = "activities"
 
     id = Column(String, primary_key=True, index=True)
-    agent_id = Column(String, ForeignKey("agents.id", ondelete="SET NULL"), nullable=True, index=True)
+    agent_id = Column(
+        String, ForeignKey("agents.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     task_id = Column(String, ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, index=True)
 
     # Activity details

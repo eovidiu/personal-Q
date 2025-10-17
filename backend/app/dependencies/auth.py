@@ -33,22 +33,22 @@ async def get_current_user(
     Raises:
         HTTPException: If token is invalid, expired, or user not authorized
     """
-    # DEVELOPMENT BYPASS: Skip auth in debug mode with explicit opt-in
-    # Requires ALLOW_DEBUG_BYPASS=true environment variable for safety
-    import os
-    if (settings.debug and
-        settings.env == "development" and
-        credentials is None and
-        os.getenv("ALLOW_DEBUG_BYPASS") == "true"):
-
-        logger.warning("=" * 80)
-        logger.warning("WARNING: Authentication bypassed in debug mode!")
-        logger.warning("This should NEVER happen in production!")
-        logger.warning("Set ALLOW_DEBUG_BYPASS=false to disable this bypass")
-        logger.warning("=" * 80)
+    # SECURITY FIX (HIGH-001): Always require auth in production, even if debug flag is set
+    # This prevents accidental authentication bypass if ENV is not set correctly
+    if settings.env == "production":
+        # Production: authentication is MANDATORY
+        if credentials is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    # DEVELOPMENT BYPASS: Skip auth in debug mode (non-production environments only)
+    elif settings.debug and credentials is None:
+        logger.warning("⚠️  DEBUG MODE: Authentication bypassed for development")
         return {"email": "dev@personal-q.local", "sub": "dev-user"}
 
-    # Production mode: Require authentication
+    # If we reach here and still no credentials, require authentication
     if credentials is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

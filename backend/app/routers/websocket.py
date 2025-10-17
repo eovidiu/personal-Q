@@ -2,14 +2,14 @@
 WebSocket endpoints for real-time updates with JWT authentication.
 """
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
-from typing import Dict, Set, Optional
 import json
 import logging
-import jwt
+from typing import Dict, Optional, Set
 
+import jwt
 from app.utils.datetime_utils import utcnow
 from config.settings import settings
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -48,11 +48,9 @@ class ConnectionManager:
         disconnected = set()
         for connection in self.subscriptions[event_type]:
             try:
-                await connection.send_json({
-                    "event_type": event_type,
-                    "data": message,
-                    "timestamp": utcnow().isoformat()
-                })
+                await connection.send_json(
+                    {"event_type": event_type, "data": message, "timestamp": utcnow().isoformat()}
+                )
             except Exception as e:
                 # Connection failed, mark for cleanup
                 logger.warning(f"Failed to send WebSocket message: {e}")
@@ -69,30 +67,26 @@ manager = ConnectionManager()
 async def verify_websocket_token(token: Optional[str]) -> Optional[dict]:
     """
     Verify JWT token for WebSocket connection.
-    
+
     Args:
         token: JWT token from query parameter
-        
+
     Returns:
         Decoded payload if valid, None otherwise
     """
     if not token:
         return None
-    
+
     try:
-        payload = jwt.decode(
-            token,
-            settings.jwt_secret_key,
-            algorithms=["HS256"]
-        )
-        
+        payload = jwt.decode(token, settings.jwt_secret_key, algorithms=["HS256"])
+
         # Verify email matches allowed user
         if payload.get("email") != settings.allowed_email:
             logger.warning(f"WebSocket: Unauthorized email in token: {payload.get('email')}")
             return None
-        
+
         return payload
-        
+
     except jwt.ExpiredSignatureError:
         logger.warning("WebSocket: Expired token")
         return None
@@ -108,7 +102,7 @@ async def verify_websocket_token(token: Optional[str]) -> Optional[dict]:
 async def websocket_endpoint(websocket: WebSocket, token: Optional[str] = None):
     """
     WebSocket connection endpoint with authentication.
-    
+
     Connection requires a valid JWT token passed as a query parameter:
     ws://localhost:8000/ws/?token=<your_jwt_token>
     """
@@ -116,9 +110,11 @@ async def websocket_endpoint(websocket: WebSocket, token: Optional[str] = None):
     user = await verify_websocket_token(token)
     if not user:
         logger.warning("WebSocket connection rejected: Invalid or missing token")
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication required")
+        await websocket.close(
+            code=status.WS_1008_POLICY_VIOLATION, reason="Authentication required"
+        )
         return
-    
+
     logger.info(f"WebSocket connection authenticated for user: {user.get('email')}")
     await manager.connect(websocket)
 
@@ -137,10 +133,7 @@ async def websocket_endpoint(websocket: WebSocket, token: Optional[str] = None):
                     for event_type in event_types:
                         await manager.subscribe(websocket, event_type)
 
-                    await websocket.send_json({
-                        "status": "subscribed",
-                        "event_types": event_types
-                    })
+                    await websocket.send_json({"status": "subscribed", "event_types": event_types})
 
                 elif action == "ping":
                     # Heartbeat

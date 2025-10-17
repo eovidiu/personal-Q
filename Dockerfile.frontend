@@ -11,10 +11,9 @@ RUN npm install
 # Copy application code
 COPY . .
 
-# Create non-root user for security
-RUN addgroup -g 1000 appgroup && \
-    adduser -D -u 1000 -G appgroup appuser && \
-    chown -R appuser:appgroup /app
+# Create non-root user for security (use UID that doesn't conflict with Alpine defaults)
+RUN adduser -D appuser && \
+    chown -R appuser:appuser /app
 
 # Switch to non-root user
 USER appuser
