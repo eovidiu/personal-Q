@@ -43,7 +43,6 @@ export function AuthCallbackPage() {
         const token = searchParams.get('token');
 
         if (!token) {
-          console.error('No token found in callback URL');
           setError('Authentication failed: No token received');
           // Redirect to login after showing error briefly
           redirectTimeoutRef.current = setTimeout(() => {
@@ -52,12 +51,8 @@ export function AuthCallbackPage() {
           return;
         }
 
-        console.info('Processing authentication token...');
-
         // Set token and fetch user info
         await setToken(token);
-
-        console.info('Authentication successful, redirecting to dashboard...');
 
         // Navigate to dashboard
         navigate('/', { replace: true });
@@ -84,8 +79,7 @@ export function AuthCallbackPage() {
         clearTimeout(redirectTimeoutRef.current);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]); // setToken and navigate are stable, but included via eslint-disable to satisfy React
+  }, [searchParams, navigate, setToken]);
 
   // Show error state
   if (error) {

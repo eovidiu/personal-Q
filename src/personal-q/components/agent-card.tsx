@@ -54,7 +54,7 @@ const statusConfig = {
   },
 };
 
-const typeConfig = {
+const typeConfig: Record<string, { label: string; color: string }> = {
   conversational: {
     label: "Conversational",
     color: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
@@ -70,6 +70,10 @@ const typeConfig = {
   automation: {
     label: "Automation",
     color: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+  },
+  default: {
+    label: "General",
+    color: "bg-gray-500/10 text-gray-600 dark:text-gray-400",
   },
 };
 
@@ -137,8 +141,8 @@ export function AgentCard({ agent }: AgentCardProps) {
 
       <CardContent className="space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="secondary" className={typeConfig[agent.type].color}>
-            {typeConfig[agent.type].label}
+          <Badge variant="secondary" className={(typeConfig[agent.type] || typeConfig.default).color}>
+            {(typeConfig[agent.type] || typeConfig.default).label}
           </Badge>
           <Badge variant="outline" className="text-xs">
             {agent.model}
