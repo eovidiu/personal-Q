@@ -16,6 +16,7 @@ from config.settings import settings
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from starlette.config import Config
+from app.middleware.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -94,12 +95,14 @@ def verify_access_token(token: str) -> Optional[dict]:
 
 
 @router.get("/login")
+@limiter.limit("10/minute")
 async def login(request: Request):
     """
     Initiate Google OAuth login flow with CSRF protection.
 
     Generates a random state token to prevent CSRF attacks.
     Redirects user to Google login page.
+    Rate limited to prevent abuse.
     """
     if not settings.google_client_id or not settings.google_client_secret:
         raise HTTPException(
@@ -118,11 +121,13 @@ async def login(request: Request):
 
 
 @router.get("/callback")
+@limiter.limit("20/minute")
 async def auth_callback(request: Request):
     """
     Handle OAuth callback from Google with CSRF validation.
 
     Verifies state parameter, user email, and creates session token.
+    Rate limited to prevent abuse.
     """
     try:
         # Validate CSRF state parameter
@@ -218,10 +223,12 @@ async def get_current_user(request: Request):
 
 
 @router.get("/verify")
+@limiter.limit("10/minute")
 async def verify_token_endpoint(request: Request):
     """
     Verify if token is valid.
 
+    Rate limited to prevent token enumeration attacks.
     Returns:
         Verification status
     """
