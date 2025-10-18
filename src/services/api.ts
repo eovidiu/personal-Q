@@ -179,17 +179,22 @@ export class WebSocketClient {
       return;
     }
 
-    // Get JWT token from localStorage
-    const token = localStorage.getItem('personal_q_token');
-
-    // Build WebSocket URL with token query parameter
-    const url = token ? `${this.baseUrl}?token=${token}` : this.baseUrl;
-
-    this.ws = new WebSocket(url);
+    // SECURITY FIX (CVE-005): Use WebSocket authentication via initial message
+    // Never pass JWT tokens in URL query parameters as they are logged
+    this.ws = new WebSocket(this.baseUrl);
 
     this.ws.onopen = () => {
       console.log('WebSocket connected');
       this.reconnectAttempts = 0;
+
+      // Send authentication message immediately after connection
+      const token = localStorage.getItem('personal_q_token');
+      if (token) {
+        this.ws?.send(JSON.stringify({
+          action: 'authenticate',
+          token: token
+        }));
+      }
     };
 
     this.ws.onmessage = (event) => {

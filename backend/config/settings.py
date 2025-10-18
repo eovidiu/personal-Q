@@ -80,19 +80,16 @@ class Settings(BaseSettings):
 
         if oauth_enabled:
             if not v:
-                if env == "production":
-                    raise ValueError(
-                        "JWT_SECRET_KEY is required when Google OAuth is "
-                        "enabled in production. Generate a secure key with: "
-                        "python -c 'import secrets; "
-                        "print(secrets.token_urlsafe(32))'"
-                    )
-                else:
-                    logger.warning(
-                        "⚠️  JWT_SECRET_KEY not set. Using insecure default for development. "
-                        "Set JWT_SECRET_KEY in .env for production."
-                    )
-                    return "INSECURE_DEV_SECRET_CHANGE_IN_PRODUCTION"
+                # SECURITY FIX: Never use hardcoded secrets (CVE-002)
+                # Generate a unique secret for each instance
+                import secrets
+                generated_secret = secrets.token_urlsafe(32)
+                logger.warning(
+                    "⚠️  JWT_SECRET_KEY not set. Generated a random secret for this session. "
+                    "For production, set JWT_SECRET_KEY in .env with: "
+                    f"JWT_SECRET_KEY={generated_secret}"
+                )
+                return generated_secret
 
             if len(v) < 32:
                 raise ValueError(
@@ -120,11 +117,12 @@ class Settings(BaseSettings):
                     "Please set CORS_ORIGINS to your production domain(s)."
                 )
 
-            # Warn about wildcard
+            # SECURITY FIX: Block wildcard CORS in production (HIGH-001)
             if "*" in origins:
-                if len(origins) > 1:
-                    raise ValueError("Cannot use wildcard '*' with other CORS origins")
-                logger.warning("⚠️  WILDCARD CORS: All origins allowed (security risk)")
+                raise ValueError(
+                    "CORS wildcard '*' is not allowed in production. "
+                    "Please specify exact allowed origins in CORS_ORIGINS environment variable."
+                )
 
         return origins
 
