@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/auth';
 
 /**
  * Integration test for Update Agent functionality
@@ -7,6 +7,7 @@ import { test, expect } from '@playwright/test';
  * - Backend must be running on http://localhost:8000
  * - Frontend must be running on http://localhost:5173
  * - Database must have test agents
+ * - ALLOWED_EMAIL environment variable must be set
  *
  * This test verifies:
  * 1. Agent update dialog opens correctly
@@ -14,22 +15,15 @@ import { test, expect } from '@playwright/test';
  * 3. Updates are saved with correct field name transformations (camelCase -> snake_case)
  * 4. Dialog closes after successful update
  * 5. Updated data appears on the page
+ *
+ * Authentication:
+ * Uses test auth fixture to bypass Google OAuth for automated testing.
  */
 
 test.describe('Agent Update Integration', () => {
-  test.beforeEach(async ({ page }) => {
-    // Navigate to login page
-    await page.goto('http://localhost:5173/login');
+  // No beforeEach needed - authenticatedPage fixture handles auth automatically
 
-    // Login with Google OAuth (this assumes test account is configured)
-    // For local testing, you may need to manually login first
-    // or set up a test user with email/password authentication
-
-    // Wait for redirect to dashboard
-    await page.waitForURL('http://localhost:5173/', { timeout: 10000 });
-  });
-
-  test('should successfully update agent name and description', async ({ page }) => {
+  test('should successfully update agent name and description', async ({ authenticatedPage: page }) => {
     // Navigate to agents page
     await page.goto('http://localhost:5173/agents');
     await page.waitForLoadState('networkidle');
@@ -108,7 +102,7 @@ test.describe('Agent Update Integration', () => {
     await expect(dialog).not.toBeVisible({ timeout: 10000 });
   });
 
-  test('should update temperature slider', async ({ page }) => {
+  test('should update temperature slider', async ({ authenticatedPage: page }) => {
     // Navigate to agents page
     await page.goto('http://localhost:5173/agents');
     await page.waitForLoadState('networkidle');
@@ -148,7 +142,7 @@ test.describe('Agent Update Integration', () => {
     await expect(dialog).not.toBeVisible({ timeout: 10000 });
   });
 
-  test('should update max tokens input', async ({ page }) => {
+  test('should update max tokens input', async ({ authenticatedPage: page }) => {
     // Navigate to agents page
     await page.goto('http://localhost:5173/agents');
     await page.waitForLoadState('networkidle');
@@ -198,7 +192,7 @@ test.describe('Agent Update Integration', () => {
     await expect(dialog).not.toBeVisible({ timeout: 10000 });
   });
 
-  test('should update system prompt', async ({ page }) => {
+  test('should update system prompt', async ({ authenticatedPage: page }) => {
     // Navigate to agents page
     await page.goto('http://localhost:5173/agents');
     await page.waitForLoadState('networkidle');

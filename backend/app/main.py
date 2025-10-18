@@ -299,6 +299,28 @@ async def health_check():
 # Authentication endpoints (public)
 app.include_router(auth.router, prefix=f"{settings.api_prefix}/auth", tags=["auth"])
 
+# SECURITY LAYER 2: Test authentication endpoint (NON-PRODUCTION ONLY)
+# This router is conditionally included ONLY when ENV != production
+# Provides JWT tokens for Playwright tests without Google OAuth
+if settings.env != "production":
+    try:
+        from app.routers import auth_test
+
+        app.include_router(
+            auth_test.router,
+            prefix=f"{settings.api_prefix}/auth",
+            tags=["auth-testing"],
+        )
+        logger.warning(
+            f"⚠️  TEST AUTH ENABLED - Environment: {settings.env} "
+            "(This endpoint must NEVER be available in production)"
+        )
+    except RuntimeError as e:
+        # Layer 1 protection triggered - this should never happen if Layer 2 works
+        logger.error(f"Failed to load test auth router: {e}")
+else:
+    logger.info("Production mode: test authentication endpoint disabled")
+
 # Protected endpoints
 app.include_router(agents.router, prefix=f"{settings.api_prefix}/agents", tags=["agents"])
 app.include_router(tasks.router, prefix=f"{settings.api_prefix}/tasks", tags=["tasks"])
