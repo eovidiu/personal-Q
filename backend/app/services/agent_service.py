@@ -3,7 +3,6 @@ Agent service layer for business logic.
 """
 
 import uuid
-from datetime import datetime
 from typing import List, Optional
 
 from app.models.activity import Activity, ActivityStatus, ActivityType
@@ -123,13 +122,7 @@ class AgentService:
             query = query.where(Agent.agent_type == agent_type)
 
         if search:
-            # Escape SQL wildcards to prevent injection attacks
-            escaped_search = (
-                search.replace("\\", "\\\\")
-                .replace("%", "\\%")
-                .replace("_", "\\_")
-                .replace("[", "\\[")
-            )
+            # Use parameterized query - SQLAlchemy handles escaping
             search_filter = or_(
                 Agent.name.ilike(f"%{search}%"), Agent.description.ilike(f"%{search}%")
             )
@@ -193,9 +186,6 @@ class AgentService:
 
         agent.updated_at = utcnow()
 
-        await db.commit()
-        await db.refresh(agent)
-
         # Log activity
         activity = Activity(
             id=str(uuid.uuid4()),
@@ -206,7 +196,10 @@ class AgentService:
             description="Agent configuration updated",
         )
         db.add(activity)
+
+        # Commit both agent update and activity in one transaction
         await db.commit()
+        await db.refresh(agent)
 
         # Invalidate cache
         await cache_service.delete(f"agent:{agent_id}")
