@@ -1,9 +1,11 @@
 """
 ABOUTME: Google OAuth authentication router for single-user system.
 ABOUTME: Implements login, callback, logout, and session verification.
+ABOUTME: Includes CSRF protection via OAuth state parameter.
 """
 
 import logging
+import secrets
 from datetime import timedelta
 from typing import Optional
 
@@ -11,11 +13,14 @@ import jwt
 from app.utils.datetime_utils import utcnow
 from authlib.integrations.starlette_client import OAuth
 from config.settings import settings
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi import APIRouter, HTTPException, Request, status
+from fastapi.responses import RedirectResponse
 from starlette.config import Config
 
 logger = logging.getLogger(__name__)
+
+# In-memory store for OAuth state tokens (use Redis in production)
+_oauth_state_store: dict[str, bool] = {}
 
 router = APIRouter()
 
@@ -91,8 +96,9 @@ def verify_access_token(token: str) -> Optional[dict]:
 @router.get("/login")
 async def login(request: Request):
     """
-    Initiate Google OAuth login flow.
+    Initiate Google OAuth login flow with CSRF protection.
 
+    Generates a random state token to prevent CSRF attacks.
     Redirects user to Google login page.
     """
     if not settings.google_client_id or not settings.google_client_secret:
@@ -101,19 +107,37 @@ async def login(request: Request):
             detail="OAuth not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
         )
 
-    # Redirect to Google OAuth
+    # Generate CSRF protection state token
+    state = secrets.token_urlsafe(32)
+    _oauth_state_store[state] = True
+    logger.info(f"Generated OAuth state token: {state[:8]}...")
+
+    # Redirect to Google OAuth with state parameter
     redirect_uri = request.url_for("auth_callback")
-    return await oauth.google.authorize_redirect(request, redirect_uri)
+    return await oauth.google.authorize_redirect(request, redirect_uri, state=state)
 
 
 @router.get("/callback")
 async def auth_callback(request: Request):
     """
-    Handle OAuth callback from Google.
+    Handle OAuth callback from Google with CSRF validation.
 
-    Verifies user email and creates session token.
+    Verifies state parameter, user email, and creates session token.
     """
     try:
+        # Validate CSRF state parameter
+        state = request.query_params.get("state")
+        if not state or state not in _oauth_state_store:
+            logger.warning(f"Invalid or missing OAuth state parameter: {state}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Invalid state parameter. Possible CSRF attack.",
+            )
+
+        # Remove state from store (one-time use)
+        _oauth_state_store.pop(state, None)
+        logger.info(f"Validated OAuth state token: {state[:8]}...")
+
         # Get OAuth token from Google
         token = await oauth.google.authorize_access_token(request)
 
@@ -142,11 +166,11 @@ async def auth_callback(request: Request):
         # Create JWT token
         access_token = create_access_token(email)
 
-        # Redirect to frontend with token
+        # Redirect to frontend auth callback with token
         frontend_url = (
             settings.cors_origins_list[0] if settings.cors_origins_list else "http://localhost:5173"
         )
-        redirect_url = f"{frontend_url}/?token={access_token}"
+        redirect_url = f"{frontend_url}/auth/callback?token={access_token}"
 
         return RedirectResponse(url=redirect_url)
 

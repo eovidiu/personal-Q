@@ -13,6 +13,7 @@ import { AgentDetailPage } from "@/personal-q/pages/agent-detail-page";
 import { TasksPage } from "@/personal-q/pages/tasks-page";
 import { SettingsPage } from "@/personal-q/pages/settings-page";
 import { LoginPage } from "@/personal-q/pages/login-page";
+import { AuthCallbackPage } from "@/personal-q/pages/auth-callback-page";
 
 export default function AIAgentApp() {
   return (
@@ -22,6 +23,7 @@ export default function AIAgentApp() {
           <Router>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
             <Route
               path="/"

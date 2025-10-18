@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -7,26 +7,15 @@ import { BotIcon, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function LoginPage() {
-  const { login, setToken, isAuthenticated, isLoading, error, clearError } = useAuth();
-  const [searchParams] = useSearchParams();
+  const { login, isAuthenticated, isLoading, error, clearError } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Handle OAuth callback token
-    const tokenFromUrl = searchParams.get('token');
-    if (tokenFromUrl) {
-      setToken(tokenFromUrl).then(() => {
-        // Remove token from URL for security
-        navigate('/', { replace: true });
-      });
-      return;
-    }
-
     // Redirect if already authenticated
     if (!isLoading && isAuthenticated) {
       navigate('/', { replace: true });
     }
-  }, [searchParams, setToken, isAuthenticated, isLoading, navigate]);
+  }, [isAuthenticated, isLoading, navigate]);
 
   if (isLoading) {
     return (

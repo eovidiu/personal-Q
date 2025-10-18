@@ -2,17 +2,20 @@
 Application configuration settings.
 """
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+import logging
 from typing import Optional
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=False
     )
 
     # Application
@@ -60,6 +63,46 @@ class Settings(BaseSettings):
     google_client_secret: Optional[str] = None
     jwt_secret_key: Optional[str] = None
     allowed_email: Optional[str] = None  # Single user email allowed to authenticate
+
+    @field_validator("jwt_secret_key")
+    @classmethod
+    def validate_jwt_secret(cls, v: Optional[str], info) -> Optional[str]:
+        """
+        Validate JWT_SECRET_KEY is set and meets minimum security requirements.
+
+        SECURITY: JWT_SECRET_KEY must be:
+        - At least 32 characters long
+        - Set in production environments
+        """
+        # Check if OAuth is enabled by checking google_client_id
+        oauth_enabled = info.data.get("google_client_id") is not None
+        env = info.data.get("env", "development")
+
+        if oauth_enabled:
+            if not v:
+                if env == "production":
+                    raise ValueError(
+                        "JWT_SECRET_KEY is required when Google OAuth is "
+                        "enabled in production. Generate a secure key with: "
+                        "python -c 'import secrets; "
+                        "print(secrets.token_urlsafe(32))'"
+                    )
+                else:
+                    logger.warning(
+                        "⚠️  JWT_SECRET_KEY not set. Using insecure default for development. "
+                        "Set JWT_SECRET_KEY in .env for production."
+                    )
+                    return "INSECURE_DEV_SECRET_CHANGE_IN_PRODUCTION"
+
+            if len(v) < 32:
+                raise ValueError(
+                    f"JWT_SECRET_KEY must be at least 32 characters long "
+                    f"(current: {len(v)}). Generate a secure key with: "
+                    "python -c 'import secrets; "
+                    "print(secrets.token_urlsafe(32))'"
+                )
+
+        return v
 
     @property
     def cors_origins_list(self) -> list[str]:
