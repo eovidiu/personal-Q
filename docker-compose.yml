@@ -26,6 +26,7 @@ services:
     env_file:
       - .env
     environment:
+      - ENV=${ENV:-development}  # SECURITY: Explicitly set environment, default to development
       - DATABASE_URL=sqlite:///./data/personal_q.db
       - CHROMA_DB_PATH=./data/chromadb
       - REDIS_URL=redis://redis:6379/0
@@ -33,6 +34,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - CORS_ORIGINS=http://localhost:5173,http://localhost:3000
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - PYTHONDONTWRITEBYTECODE=1
     volumes:
       - backend_data:/app/data
       - ./backend:/app
@@ -55,6 +57,7 @@ services:
     env_file:
       - .env
     environment:
+      - ENV=${ENV:-development}  # SECURITY: Explicitly set environment
       - DATABASE_URL=sqlite:///./data/personal_q.db
       - CHROMA_DB_PATH=./data/chromadb
       - REDIS_URL=redis://redis:6379/0
@@ -77,6 +80,7 @@ services:
     env_file:
       - .env
     environment:
+      - ENV=${ENV:-development}  # SECURITY: Explicitly set environment
       - DATABASE_URL=sqlite:///./data/personal_q.db
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
