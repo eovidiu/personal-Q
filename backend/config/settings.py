@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     debug: bool = False  # Set via environment variable in development
 
     # API
-    api_host: str = "0.0.0.0"
+    api_host: str = "0.0.0.0"  # nosec B104 - Required for Docker container
     api_port: int = 8000
     api_prefix: str = "/api/v1"
 
