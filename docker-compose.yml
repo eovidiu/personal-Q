@@ -33,6 +33,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - CORS_ORIGINS=http://localhost:5173,http://localhost:3000
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - PYTHONDONTWRITEBYTECODE=1
     volumes:
       - backend_data:/app/data
       - ./backend:/app

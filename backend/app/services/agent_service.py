@@ -168,7 +168,9 @@ class AgentService:
         Raises:
             ValueError: If updated name conflicts with existing agent
         """
-        agent = await AgentService.get_agent(db, agent_id)
+        # Fetch directly from DB (not from cache) to ensure session attachment
+        result = await db.execute(select(Agent).where(Agent.id == agent_id))
+        agent = result.scalar_one_or_none()
         if not agent:
             return None
 
