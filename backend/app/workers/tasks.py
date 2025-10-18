@@ -3,8 +3,7 @@ Celery tasks for background processing.
 """
 
 import asyncio
-import sys
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from app.db.database import AsyncSessionLocal
 from app.models.activity import Activity
@@ -64,6 +63,20 @@ async def execute_agent_task(self, task_id: str):
         task.celery_task_id = self.request.id
         await db.commit()
 
+        # Broadcast task started event
+        from app.routers.websocket import broadcast_event
+
+        await broadcast_event(
+            "task_started",
+            {
+                "task_id": task.id,
+                "agent_id": task.agent_id,
+                "title": task.title,
+                "status": "running",
+                "started_at": task.started_at.isoformat(),
+            },
+        )
+
         try:
             # Execute with CrewAI
             result = await CrewService.execute_agent_task(
@@ -93,6 +106,22 @@ async def execute_agent_task(self, task_id: str):
 
             await db.commit()
 
+            # Broadcast task completion event
+            event_type = "task_completed" if result["success"] else "task_failed"
+            await broadcast_event(
+                event_type,
+                {
+                    "task_id": task.id,
+                    "agent_id": task.agent_id,
+                    "title": task.title,
+                    "status": task.status.value,
+                    "output_data": task.output_data,
+                    "error_message": task.error_message,
+                    "execution_time_seconds": task.execution_time_seconds,
+                    "completed_at": task.completed_at.isoformat() if task.completed_at else None,
+                },
+            )
+
             return result
 
         except Exception as e:
@@ -102,6 +131,19 @@ async def execute_agent_task(self, task_id: str):
             task.completed_at = utcnow()
             agent.tasks_failed += 1
             await db.commit()
+
+            # Broadcast task failure event
+            await broadcast_event(
+                "task_failed",
+                {
+                    "task_id": task.id,
+                    "agent_id": task.agent_id,
+                    "title": task.title,
+                    "status": "failed",
+                    "error_message": str(e),
+                    "completed_at": task.completed_at.isoformat() if task.completed_at else None,
+                },
+            )
 
             return {"success": False, "error": str(e)}
 
