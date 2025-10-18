@@ -1,6 +1,20 @@
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2Icon, ClockIcon, XCircleIcon, PlayCircleIcon, Loader2Icon, BanIcon } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { CheckCircle2Icon, ClockIcon, XCircleIcon, PlayCircleIcon, Loader2Icon, BanIcon, XIcon } from "lucide-react";
+import { TaskDetailModal } from "./task-detail-modal";
+import { useCancelTask } from "@/hooks/useCancelTask";
 import type { Task } from "@/types/task";
 
 interface TaskCardProps {
@@ -55,10 +69,29 @@ const priorityConfig = {
 };
 
 export function TaskCard({ task }: TaskCardProps) {
+  const [showDetail, setShowDetail] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const cancelTaskMutation = useCancelTask();
   const StatusIcon = statusConfig[task.status].icon;
 
+  const canCancel = task.status === 'pending' || task.status === 'running';
+
+  const handleCancelClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click from opening detail modal
+    setShowCancelDialog(true);
+  };
+
+  const handleConfirmCancel = async () => {
+    await cancelTaskMutation.mutateAsync(task.id);
+    setShowCancelDialog(false);
+  };
+
   return (
-    <Card className="hover:shadow-lg transition-shadow">
+    <>
+      <Card
+        className="hover:shadow-lg transition-shadow cursor-pointer"
+        onClick={() => setShowDetail(true)}
+      >
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
@@ -70,6 +103,18 @@ export function TaskCard({ task }: TaskCardProps) {
               <CardDescription className="line-clamp-2">{task.description}</CardDescription>
             )}
           </div>
+          {canCancel && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleCancelClick}
+              disabled={cancelTaskMutation.isPending}
+              className="ml-2 flex-shrink-0"
+              title="Cancel task"
+            >
+              <XIcon className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </CardHeader>
 
@@ -127,5 +172,36 @@ export function TaskCard({ task }: TaskCardProps) {
         )}
       </CardContent>
     </Card>
+
+      <TaskDetailModal
+        taskId={task.id}
+        open={showDetail}
+        onOpenChange={setShowDetail}
+      />
+
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Task?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel "{task.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No, keep running</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmCancel} disabled={cancelTaskMutation.isPending}>
+              {cancelTaskMutation.isPending ? (
+                <>
+                  <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
+                  Cancelling...
+                </>
+              ) : (
+                'Yes, cancel task'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
