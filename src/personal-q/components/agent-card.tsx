@@ -78,30 +78,40 @@ const typeConfig: Record<string, { label: string; color: string }> = {
 };
 
 export function AgentCard({ agent }: AgentCardProps) {
+  // Safe defaults for missing properties
+  const safeAgent = {
+    ...agent,
+    tasksCompleted: agent.tasksCompleted ?? 0,
+    successRate: agent.successRate ?? 0,
+    uptime: agent.uptime ?? 0,
+    tags: agent.tags ?? [],
+    lastActive: agent.lastActive ?? 'Never',
+  };
+
   return (
     <Card className="hover:shadow-lg transition-shadow">
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-3 flex-1">
             <Avatar className="h-12 w-12">
-              <AvatarImage src={agent.avatar} alt={agent.name} />
+              <AvatarImage src={safeAgent.avatar} alt={safeAgent.name} />
 
               <AvatarFallback>
-                {agent.name.substring(0, 2).toUpperCase()}
+                {safeAgent.name.substring(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <CardTitle className="text-lg truncate mb-2">{agent.name}</CardTitle>
+              <CardTitle className="text-lg truncate mb-2">{safeAgent.name}</CardTitle>
               <div className="mb-2">
                 <Badge
                   variant="outline"
-                  className={statusConfig[agent.status].className}
+                  className={statusConfig[safeAgent.status].className}
                 >
-                  {statusConfig[agent.status].label}
+                  {statusConfig[safeAgent.status].label}
                 </Badge>
               </div>
               <CardDescription className="line-clamp-2">
-                {agent.description}
+                {safeAgent.description}
               </CardDescription>
             </div>
           </div>
@@ -117,7 +127,7 @@ export function AgentCard({ agent }: AgentCardProps) {
                 Configure
               </DropdownMenuItem>
               <DropdownMenuItem>
-                {agent.status === "active" ? (
+                {safeAgent.status === "active" ? (
                   <>
                     <PauseIcon className="h-4 w-4 mr-2" />
                     Pause
@@ -141,13 +151,13 @@ export function AgentCard({ agent }: AgentCardProps) {
 
       <CardContent className="space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="secondary" className={(typeConfig[agent.type] || typeConfig.default).color}>
-            {(typeConfig[agent.type] || typeConfig.default).label}
+          <Badge variant="secondary" className={(typeConfig[safeAgent.type] || typeConfig.default).color}>
+            {(typeConfig[safeAgent.type] || typeConfig.default).label}
           </Badge>
           <Badge variant="outline" className="text-xs">
-            {agent.model}
+            {safeAgent.model}
           </Badge>
-          {agent.tags.slice(0, 2).map((tag) => (
+          {safeAgent.tags.slice(0, 2).map((tag) => (
             <Badge key={tag} variant="outline" className="text-xs">
               {tag}
             </Badge>
@@ -162,7 +172,7 @@ export function AgentCard({ agent }: AgentCardProps) {
               <span>Tasks</span>
             </div>
             <p className="text-lg font-semibold">
-              {agent.tasksCompleted.toLocaleString()}
+              {safeAgent.tasksCompleted.toLocaleString()}
             </p>
           </div>
           <div className="space-y-1">
@@ -171,7 +181,7 @@ export function AgentCard({ agent }: AgentCardProps) {
 
               <span>Success</span>
             </div>
-            <p className="text-lg font-semibold">{agent.successRate}%</p>
+            <p className="text-lg font-semibold">{safeAgent.successRate}%</p>
           </div>
           <div className="space-y-1">
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -179,17 +189,17 @@ export function AgentCard({ agent }: AgentCardProps) {
 
               <span>Uptime</span>
             </div>
-            <p className="text-lg font-semibold">{agent.uptime}%</p>
+            <p className="text-lg font-semibold">{safeAgent.uptime}%</p>
           </div>
         </div>
 
         <div className="text-xs text-muted-foreground pt-2 border-t border-border">
-          Last active: {agent.lastActive}
+          Last active: {safeAgent.lastActive}
         </div>
       </CardContent>
 
       <CardFooter>
-        <Link to={`/agent/${agent.id}`} className="w-full">
+        <Link to={`/agent/${safeAgent.id}`} className="w-full">
           <Button variant="outline" className="w-full">
             View Details
           </Button>
