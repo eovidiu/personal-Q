@@ -24,16 +24,53 @@ def get_identifier(request: Request) -> str:
     Returns:
         Identifier string for rate limiting
     """
-    # For now, use IP address
-    # TODO: After authentication is implemented, use user ID
-    identifier = get_remote_address(request)
+    # SECURITY FIX: Prevent rate limiting bypass via header spoofing (CVE-004)
+    # Only trust X-Forwarded-For header from known reverse proxies
 
-    # If behind proxy, try to get real IP from headers
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        identifier = forwarded.split(",")[0].strip()
+    # List of trusted proxy IPs (configure based on your deployment)
+    # In production, this should be loaded from environment config
+    TRUSTED_PROXIES = {
+        "127.0.0.1",  # localhost
+        "172.16.0.0/12",  # Docker default network range
+        "10.0.0.0/8",  # Private network range
+    }
 
-    return identifier
+    # Get the immediate client IP
+    client_ip = get_remote_address(request)
+
+    # Check if the client is a trusted proxy
+    from ipaddress import ip_address, ip_network
+
+    try:
+        client_addr = ip_address(client_ip) if client_ip else None
+        is_trusted_proxy = False
+
+        if client_addr:
+            for trusted in TRUSTED_PROXIES:
+                if "/" in trusted:
+                    # It's a network range
+                    if client_addr in ip_network(trusted):
+                        is_trusted_proxy = True
+                        break
+                else:
+                    # It's a single IP
+                    if str(client_addr) == trusted:
+                        is_trusted_proxy = True
+                        break
+
+        # Only use X-Forwarded-For if request is from trusted proxy
+        if is_trusted_proxy:
+            forwarded = request.headers.get("X-Forwarded-For")
+            if forwarded:
+                # Get the first IP in the chain (original client)
+                identifier = forwarded.split(",")[0].strip()
+                logger.debug(f"Using X-Forwarded-For IP: {identifier} (via trusted proxy {client_ip})")
+                return identifier
+    except (ValueError, TypeError) as e:
+        logger.warning(f"Invalid IP address format: {e}")
+
+    # Default to direct client IP
+    return client_ip or "unknown"
 
 
 # Create limiter instance
