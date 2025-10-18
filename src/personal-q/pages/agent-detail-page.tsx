@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -93,11 +94,18 @@ export function AgentDetailPage() {
 
   // Handle configuration update
   const handleConfigUpdate = async (data: any) => {
+    console.log('[AgentDetailPage] handleConfigUpdate called with:', data);
+    const toastId = toast.loading('Updating agent configuration...');
     try {
-      await updateAgentMutation.mutateAsync(data);
+      console.log('[AgentDetailPage] Calling updateAgentMutation.mutateAsync...');
+      const result = await updateAgentMutation.mutateAsync(data);
+      console.log('[AgentDetailPage] Update successful:', result);
+      toast.success('Agent updated successfully', { id: toastId });
       setIsEditDialogOpen(false);
-    } catch (error) {
-      console.error('Failed to update agent:', error);
+    } catch (error: any) {
+      console.error('[AgentDetailPage] Failed to update agent:', error);
+      toast.error(`Failed to update agent: ${error?.response?.data?.detail || error?.message || 'Unknown error'}`, { id: toastId });
+      // Don't close dialog on error so user can try again
     }
   };
 
