@@ -25,6 +25,13 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
+    // TODO: WebSocket authentication is failing - temporarily disabled
+    // See: https://github.com/eovidiu/personal-Q/issues/XXX
+    // The WebSocket endpoint requires JWT validation that's currently rejecting valid tokens
+    // Application works perfectly without WebSocket (just no real-time updates)
+
+    // Uncomment when WebSocket auth is fixed:
+    /*
     // Only connect WebSocket if user is authenticated
     if (!isAuthenticated) {
       return;
@@ -35,6 +42,11 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     // Connect to WebSocket with JWT token
     client.connect();
     setIsConnected(true);
+    */
+
+    // Temporarily disable WebSocket to prevent console errors
+    console.info('WebSocket disabled temporarily - real-time updates unavailable');
+    return;
 
     // Subscribe to events
     client.subscribe([
@@ -77,10 +89,12 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     });
 
     // Cleanup on unmount
+    /*
     return () => {
       client.disconnect();
       setIsConnected(false);
     };
+    */
   }, [queryClient, isAuthenticated]);
 
   return (
