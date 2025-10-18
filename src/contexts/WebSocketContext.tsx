@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { wsClient, WebSocketClient } from '@/services/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface WebSocketContextValue {
   client: WebSocketClient;
@@ -21,11 +22,17 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [isConnected, setIsConnected] = React.useState(false);
   const queryClient = useQueryClient();
   const clientRef = useRef(wsClient);
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
+    // Only connect WebSocket if user is authenticated
+    if (!isAuthenticated) {
+      return;
+    }
+
     const client = clientRef.current;
 
-    // Connect to WebSocket
+    // Connect to WebSocket with JWT token
     client.connect();
     setIsConnected(true);
 
@@ -74,7 +81,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       client.disconnect();
       setIsConnected(false);
     };
-  }, [queryClient]);
+  }, [queryClient, isAuthenticated]);
 
   return (
     <WebSocketContext.Provider value={{ client: clientRef.current, isConnected }}>

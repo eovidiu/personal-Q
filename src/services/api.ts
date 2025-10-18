@@ -172,14 +172,20 @@ export class WebSocketClient {
   private reconnectDelay = 1000;
   private eventHandlers: Map<string, Set<(data: any) => void>> = new Map();
 
-  constructor(private url: string = `ws://localhost:8000/ws`) {}
+  constructor(private baseUrl: string = `ws://localhost:8000/ws`) {}
 
   connect(): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
       return;
     }
 
-    this.ws = new WebSocket(this.url);
+    // Get JWT token from localStorage
+    const token = localStorage.getItem('personal_q_token');
+
+    // Build WebSocket URL with token query parameter
+    const url = token ? `${this.baseUrl}?token=${token}` : this.baseUrl;
+
+    this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {
       console.log('WebSocket connected');
