@@ -33,11 +33,12 @@ export function AgentForm({ agent, onSubmit, onCancel }: AgentFormProps) {
   const [formData, setFormData] = useState({
     name: agent?.name || "",
     description: agent?.description || "",
-    type: agent?.type || ("conversational" as AgentType),
+    // Handle both snake_case (backend) and camelCase (legacy)
+    type: (agent as any)?.agent_type || agent?.type || ("conversational" as AgentType),
     model: agent?.model || "GPT-4",
     temperature: agent?.temperature || 0.7,
-    maxTokens: agent?.maxTokens || 2048,
-    systemPrompt: agent?.systemPrompt || "",
+    maxTokens: (agent as any)?.max_tokens || (agent as any)?.maxTokens || 2048,
+    systemPrompt: (agent as any)?.system_prompt || (agent as any)?.systemPrompt || "",
     tags: agent?.tags || [],
   });
 
@@ -45,7 +46,20 @@ export function AgentForm({ agent, onSubmit, onCancel }: AgentFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit?.(formData);
+
+    // Convert camelCase to snake_case for backend API
+    const apiData = {
+      name: formData.name,
+      description: formData.description,
+      agent_type: formData.type,  // Convert type -> agent_type
+      model: formData.model,
+      temperature: formData.temperature,
+      max_tokens: formData.maxTokens,  // Convert maxTokens -> max_tokens
+      system_prompt: formData.systemPrompt,  // Convert systemPrompt -> system_prompt
+      tags: formData.tags,
+    };
+
+    onSubmit?.(apiData);
   };
 
   const addTag = () => {
