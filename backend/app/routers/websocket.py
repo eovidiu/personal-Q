@@ -99,27 +99,61 @@ async def verify_websocket_token(token: Optional[str]) -> Optional[dict]:
 
 
 @router.websocket("/")
-async def websocket_endpoint(websocket: WebSocket, token: Optional[str] = None):
+async def websocket_endpoint(websocket: WebSocket):
     """
     WebSocket connection endpoint with authentication.
 
-    Connection requires a valid JWT token passed as a query parameter:
-    ws://localhost:8000/ws/?token=<your_jwt_token>
+    SECURITY FIX (CVE-005, HIGH-002): Authentication via message instead of URL
+    Connection now requires authentication via initial message after connection.
+    This prevents JWT tokens from appearing in logs, browser history, or proxy logs.
     """
-    # Verify authentication before accepting connection
-    user = await verify_websocket_token(token)
-    if not user:
-        logger.warning("WebSocket connection rejected: Invalid or missing token")
-        await websocket.close(
-            code=status.WS_1008_POLICY_VIOLATION, reason="Authentication required"
-        )
-        return
+    # Accept connection first (unauthenticated)
+    await websocket.accept()
 
-    logger.info(f"WebSocket connection authenticated for user: {user.get('email')}")
-    await manager.connect(websocket)
+    # Set a timeout for authentication (10 seconds)
+    authenticated = False
+    user = None
 
     try:
-        while True:
+        # Wait for authentication message
+        import asyncio
+        try:
+            # Give client 10 seconds to authenticate
+            auth_data = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
+            auth_message = json.loads(auth_data)
+
+            if auth_message.get("action") == "authenticate":
+                token = auth_message.get("token")
+                user = await verify_websocket_token(token)
+
+                if user:
+                    authenticated = True
+                    logger.info(f"WebSocket authenticated for user: {user.get('email')}")
+                    await manager.connect(websocket)
+                    await websocket.send_json({"status": "authenticated", "user": user.get("email")})
+                else:
+                    logger.warning("WebSocket authentication failed: Invalid token")
+                    await websocket.send_json({"error": "Authentication failed"})
+                    await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token")
+                    return
+            else:
+                logger.warning("WebSocket: First message must be authentication")
+                await websocket.send_json({"error": "Authentication required"})
+                await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication required")
+                return
+
+        except asyncio.TimeoutError:
+            logger.warning("WebSocket: Authentication timeout")
+            await websocket.send_json({"error": "Authentication timeout"})
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication timeout")
+            return
+        except json.JSONDecodeError:
+            await websocket.send_json({"error": "Invalid authentication message"})
+            await websocket.close(code=status.WS_1003_UNSUPPORTED_DATA, reason="Invalid JSON")
+            return
+
+        # Main message loop (only reached if authenticated)
+        while authenticated:
             # Receive messages from client
             data = await websocket.receive_text()
 
