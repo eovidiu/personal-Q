@@ -1,11 +1,7 @@
 import { useState } from "react";
-import { AgentStats } from "@/personal-q/components/agent-stats";
 import { AgentList } from "@/personal-q/components/agent-list";
-import { AgentActivity } from "@/personal-q/components/agent-activity";
 import { AgentForm } from "@/personal-q/components/agent-form";
 import { useAgents } from "@/hooks/useAgents";
-import { useActivities } from "@/hooks/useActivities";
-import { useDashboardMetrics } from "@/hooks/useMetrics";
 import { useCreateAgent } from "@/hooks/useCreateAgent";
 import {
   Dialog,
@@ -13,19 +9,26 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
+/**
+ * AgentsPage - Full list of all agents
+ *
+ * Shows:
+ * - Complete list of all agents with filtering/search capabilities
+ * - Create new agent button
+ *
+ * This is the dedicated agents management page.
+ */
 export function AgentsPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview");
 
   // Fetch data using React Query hooks
   const { data: agentsData, isLoading: agentsLoading, error: agentsError } = useAgents();
-  const { data: metricsData, isLoading: metricsLoading } = useDashboardMetrics();
-  const { data: activitiesData, isLoading: activitiesLoading } = useActivities({ page_size: 10 });
   const createAgentMutation = useCreateAgent();
 
   // Handle create agent submission
@@ -39,16 +42,15 @@ export function AgentsPage() {
   };
 
   // Show loading state
-  if (agentsLoading || metricsLoading) {
+  if (agentsLoading) {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Personal Q</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Agents</h1>
           <p className="text-muted-foreground mt-1">
-            Manage and monitor your AI agents
+            Manage and configure your AI agents
           </p>
         </div>
-        <Skeleton className="h-32 w-full" />
         <Skeleton className="h-64 w-full" />
       </div>
     );
@@ -59,9 +61,9 @@ export function AgentsPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Personal Q</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Agents</h1>
           <p className="text-muted-foreground mt-1">
-            Manage and monitor your AI agents
+            Manage and configure your AI agents
           </p>
         </div>
         <Alert variant="destructive">
@@ -75,66 +77,27 @@ export function AgentsPage() {
   }
 
   const agents = agentsData?.agents || [];
-  const metrics = metricsData || {
-    total_agents: 0,
-    active_agents: 0,
-    tasks_completed: 0,
-    avg_success_rate: 0,
-    trends: undefined
-  };
-  const activities = activitiesData?.activities || [];
 
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Personal Q</h1>
-        <p className="text-muted-foreground mt-1">
-          Manage and monitor your AI agents
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Agents</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage and configure all your AI agents
+          </p>
+        </div>
+        <Link to="/">
+          <Button variant="outline">Back to Dashboard</Button>
+        </Link>
       </div>
 
-      {/* Statistics */}
-      <AgentStats
-        totalAgents={metrics.total_agents}
-        activeAgents={metrics.active_agents}
-        totalTasks={metrics.tasks_completed}
-        averageSuccessRate={metrics.avg_success_rate}
-        trends={metrics.trends}
+      {/* Full Agent List */}
+      <AgentList
+        agents={agents}
+        onCreateNew={() => setIsCreateDialogOpen(true)}
       />
-
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="all-agents">All Agents</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-6 mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <AgentList
-                agents={agents.slice(0, 6)}
-                onCreateNew={() => setIsCreateDialogOpen(true)}
-              />
-            </div>
-            <div>
-              {activitiesLoading ? (
-                <Skeleton className="h-64 w-full" />
-              ) : (
-                <AgentActivity activities={activities} />
-              )}
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="all-agents" className="mt-6">
-          <AgentList
-            agents={agents}
-            onCreateNew={() => setIsCreateDialogOpen(true)}
-          />
-        </TabsContent>
-      </Tabs>
 
       {/* Create Agent Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>

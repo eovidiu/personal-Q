@@ -8,6 +8,7 @@ import { WebSocketProvider } from "@/contexts/WebSocketContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { DashboardLayout } from "@/personal-q/layouts/dashboard-layout";
+import { DashboardPage } from "@/personal-q/pages/dashboard-page";
 import { AgentsPage } from "@/personal-q/pages/agents-page";
 import { AgentDetailPage } from "@/personal-q/pages/agent-detail-page";
 import { TasksPage } from "@/personal-q/pages/tasks-page";
@@ -30,7 +31,7 @@ export default function AIAgentApp() {
               element={
                 <ProtectedRoute>
                   <DashboardLayout>
-                    <AgentsPage />
+                    <DashboardPage />
                   </DashboardLayout>
                 </ProtectedRoute>
               }
