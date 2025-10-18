@@ -40,18 +40,138 @@ jobs:
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
 
-            Please review this pull request and provide feedback on:
-            - Code quality and best practices
-            - Potential bugs or issues
-            - Performance considerations
-            - Security concerns
-            - Test coverage
+
+            <extended_thinking>
+            You are conducting a comprehensive code review for a pull request in a full-stack application. Before providing your analysis, think deeply about the changes across all dimensions of code quality, architecture, and best practices.
+            </extended_thinking>
+
+            # PR Code Review - Technical Stack Context
+
+            ## Project Architecture
+            This is a **full-stack monorepo** with the following structure:
+            - **Frontend**: React 19 SPA with TypeScript, Vite, Tailwind CSS, shadcn/ui components
+            - **Backend**: FastAPI (Python 3.11+) with async support, SQLAlchemy ORM
+            - **AI/Agents**: CrewAI + Claude API integration for multi-agent orchestration
+            - **Data Layer**: SQLite + ChromaDB (vector database)
+            - **Task Queue**: Celery + Redis for background jobs
+            - **Infrastructure**: Docker Compose, GitHub Actions CI/CD
+
+            ## Review Scope
+            Analyze the PR changes across these critical dimensions:
+
+            ### 1. **Code Quality & Standards**
+            - TypeScript/Python type safety and strict typing adherence
+            - Code formatting compliance (black, ESLint, Prettier)
+            - Naming conventions and code clarity
+            - Comment quality and documentation
+            - Error handling patterns (try-catch in TS, proper exception handling in Python)
+
+            ### 2. **Architecture & Design Patterns**
+            - Component composition and reusability (React patterns, hooks usage)
+            - Backend layering (routes → services → database)
+            - Separation of concerns and single responsibility
+            - Proper use of FastAPI dependencies and async/await
+            - State management patterns (TanStack Query, React Hook Form)
+
+            ### 3. **Performance & Optimization**
+            - React rendering optimization (useMemo, useCallback, React.memo)
+            - Database query efficiency (SQLAlchemy N+1 queries, indexing)
+            - API response times and pagination
+            - Bundle size impact (frontend dependencies)
+            - Celery task optimization and async operations
+
+            ### 4. **Security**
+            - Authentication/authorization checks
+            - Input validation (Zod schemas, Pydantic models)
+            - SQL injection prevention (SQLAlchemy parameterization)
+            - XSS prevention in React components
+            - API key and sensitive data handling
+            - CORS configuration
+
+            ### 5. **AI/LLM Integration**
+            - Claude API usage efficiency (token optimization, prompt engineering)
+            - CrewAI agent orchestration patterns
+            - ChromaDB vector operations and embedding management
+            - LangChain integration patterns
+            - Error handling for AI service failures
+
+            ### 6. **Testing & Quality Assurance**
+            - Test coverage for new code (pytest, Playwright)
+            - Edge case handling
+            - Mock/stub patterns for external dependencies
+            - Integration test completeness
+            - E2E test scenarios for critical paths
+
+            ### 7. **UI/UX & Accessibility**
+            - Radix UI accessibility compliance (ARIA attributes)
+            - Responsive design (Tailwind breakpoints)
+            - Loading states and error boundaries
+            - Form validation UX (React Hook Form + Zod)
+            - Visual feedback and animations (Framer Motion)
+
+            ### 8. **Data Visualization**
+            - Chart performance (Recharts, Plotly, D3, ECharts)
+            - Data transformation efficiency
+            - Accessibility of visualizations
+            - Responsive chart behavior
+
+            ### 9. **Database & Migrations**
+            - Alembic migration quality
+            - Schema design and normalization
+            - Index strategy
+            - Data validation at DB layer (Pydantic)
+
+            ### 10. **DevOps & Infrastructure**
+            - Docker configuration changes
+            - Environment variable management
+            - CI/CD pipeline impact
+            - Dependency updates and security vulnerabilities
+
+            ## Review Output Format
+            Provide your review in this structure:
+            ### 🎯 Summary
+            [2-3 sentence high-level assessment of the PR]
+
+            ### ✅ Strengths
+            [Bullet points highlighting what was done well]
+
+            ### 🔴 Critical Issues
+            [Issues that MUST be fixed before merge - security, data loss, breaking changes]
+
+            ### 🟡 Important Suggestions
+            [Significant improvements that should be addressed]
+
+            ### 🔵 Minor Improvements
+            [Nice-to-have optimizations and style suggestions]
+
+            ### 📊 Code Metrics
+            - Complexity: [High/Medium/Low]
+            - Test Coverage: [Assessment]
+            - Performance Impact: [Positive/Neutral/Negative]
+            - Breaking Changes: [Yes/No]
+
+            ### 🚀 Recommendation
+            [Approve / Request Changes / Needs Discussion]
+
+            ## Special Considerations
+            - **React 19**: Be aware of new concurrent features and Server Components compatibility
+            - **FastAPI Best Practices**: Dependency injection, background tasks, WebSocket patterns
+            - **CrewAI Patterns**: Agent coordination, task delegation, crew configuration
+            - **ChromaDB**: Vector similarity search optimization, collection management
+            - **Tailwind + shadcn/ui**: Component variant patterns, accessibility
+
+            ## Review Philosophy
+            - **Be constructive**: Suggest solutions, not just problems
+            - **Prioritize impact**: Focus on correctness > performance > style
+            - **Context matters**: Consider the PR's scope and purpose
+            - **Teach, don't lecture**: Explain the "why" behind suggestions
+            - **Acknowledge good work**: Highlight positive patterns to reinforce them
 
             Use the repository's CLAUDE.md for guidance on style and conventions. Be constructive and helpful in your feedback.
-
             Use `gh pr comment` with your Bash tool to leave your review as a comment on the PR.
+            Now, thoroughly review the PR changes using extended thinking and provide your analysis.
+
 
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://docs.claude.com/en/docs/claude-code/cli-reference for available options
           claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
-
