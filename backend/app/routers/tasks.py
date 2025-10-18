@@ -11,8 +11,9 @@ from app.dependencies.auth import get_current_user
 from app.middleware.rate_limit import get_rate_limit, limiter
 from app.models.agent import Agent
 from app.models.task import Task as TaskModel
-from app.models.task import TaskPriority, TaskStatus
+from app.models.task import TaskStatus
 from app.schemas.task import Task, TaskCreate, TaskList, TaskUpdate
+from app.utils.datetime_utils import utcnow
 from app.workers.tasks import execute_agent_task
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, select
@@ -123,5 +124,62 @@ async def update_task(
 
     await db.commit()
     await db.refresh(task)
+
+    return task
+
+
+@router.post("/{task_id}/cancel", response_model=Task)
+@limiter.limit(get_rate_limit("task_operations"))
+async def cancel_task(
+    request: Request,
+    task_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: Dict = Depends(get_current_user),
+):
+    """
+    Cancel a running or pending task.
+
+    - Revokes the Celery task if it's running
+    - Updates task status to CANCELLED
+    - Broadcasts cancellation event via WebSocket
+    """
+    result = await db.execute(select(TaskModel).where(TaskModel.id == task_id))
+    task = result.scalar_one_or_none()
+
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    # Only allow cancellation of pending or running tasks
+    if task.status not in [TaskStatus.PENDING, TaskStatus.RUNNING]:
+        raise HTTPException(
+            status_code=400, detail=f"Cannot cancel task with status {task.status.value}"
+        )
+
+    # Revoke Celery task if it exists
+    if task.celery_task_id:
+        from app.workers.celery_app import celery_app
+
+        celery_app.control.revoke(task.celery_task_id, terminate=True)
+
+    # Update task status
+    task.status = TaskStatus.CANCELLED
+    task.completed_at = utcnow()
+
+    await db.commit()
+    await db.refresh(task)
+
+    # Broadcast cancellation event
+    from app.routers.websocket import broadcast_event
+
+    await broadcast_event(
+        "task_cancelled",
+        {
+            "task_id": task.id,
+            "agent_id": task.agent_id,
+            "title": task.title,
+            "status": "cancelled",
+            "completed_at": task.completed_at.isoformat(),
+        },
+    )
 
     return task

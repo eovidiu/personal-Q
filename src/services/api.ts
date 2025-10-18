@@ -113,6 +113,11 @@ class APIClient {
     return response.data;
   }
 
+  async cancelTask(id: string): Promise<Task> {
+    const response = await this.client.post(`/tasks/${id}/cancel`);
+    return response.data;
+  }
+
   // Activity endpoints
   async getActivities(params?: {
     page?: number;

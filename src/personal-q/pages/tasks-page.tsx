@@ -11,10 +11,13 @@ import { TaskCard } from "@/personal-q/components/task-card";
 import { useTasks } from "@/hooks/useTasks";
 import { useCreateTask } from "@/hooks/useCreateTask";
 import { useAgents } from "@/hooks/useAgents";
+import { useTaskWebSocket } from "@/hooks/useTaskWebSocket";
 import { PlusIcon, AlertCircle, Loader2 } from "lucide-react";
 import type { TaskStatus, TaskPriority, TaskCreate } from "@/types/task";
 
 export function TasksPage() {
+  // Enable real-time task updates via WebSocket
+  useTaskWebSocket();
   const [statusFilter, setStatusFilter] = useState<TaskStatus | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
