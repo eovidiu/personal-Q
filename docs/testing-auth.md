@@ -148,6 +148,8 @@ These tests verify:
 - ✅ Email validation enforces ALLOWED_EMAIL
 - ✅ Tokens are valid and match production format
 - ✅ Environment checks are enforced
+- ✅ Rate limiting (10 requests/minute per IP)
+- ✅ Token expiration is exactly 24 hours (with clock skew tolerance)
 
 ## Troubleshooting
 

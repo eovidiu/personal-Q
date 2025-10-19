@@ -62,9 +62,15 @@ test.describe('Test Auth Endpoint - Security Validation', () => {
     expect(payload).toHaveProperty('exp');
     expect(payload).toHaveProperty('iat');
 
-    // Verify expiration is in the future
+    // Verify expiration is in the future and matches expected 24-hour duration
     const now = Math.floor(Date.now() / 1000);
     expect(payload.exp).toBeGreaterThan(now);
+
+    // IMPORTANT-003: Validate expected 24-hour expiration with clock skew tolerance
+    const expectedExpiration = payload.iat + (24 * 3600); // 24 hours
+    const clockSkewTolerance = 60; // 60 seconds tolerance
+    expect(payload.exp).toBeGreaterThanOrEqual(expectedExpiration - clockSkewTolerance);
+    expect(payload.exp).toBeLessThanOrEqual(expectedExpiration + clockSkewTolerance);
   });
 
   test('should reject unauthorized email addresses', async () => {

@@ -203,7 +203,8 @@ class AgentService:
         await db.commit()
         await db.refresh(agent)
 
-        # Invalidate cache
+        # CACHE CONSISTENCY: Invalidate cache after update
+        # This ensures subsequent reads get fresh data from database
         await cache_service.delete(f"agent:{agent_id}")
 
         return agent

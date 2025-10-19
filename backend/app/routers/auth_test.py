@@ -13,9 +13,10 @@ This file should ONLY be imported in test/development environments.
 
 import logging
 
+from app.middleware.rate_limit import limiter
 from app.routers.auth import create_access_token
 from config.settings import settings
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, field_validator
 
 logger = logging.getLogger(__name__)
@@ -102,7 +103,8 @@ def _validate_test_environment() -> None:
 
 
 @router.post("/test-login", response_model=TestLoginResponse)
-async def test_login(request: TestLoginRequest) -> TestLoginResponse:
+@limiter.limit("10/minute")  # Rate limit: 10 requests per minute per IP
+async def test_login(http_request: Request, request: TestLoginRequest) -> TestLoginResponse:
     """
     TEST-ONLY: Generate JWT token for automated testing.
 
