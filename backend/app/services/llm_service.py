@@ -225,6 +225,18 @@ class LLMService:
         temperature = temperature if temperature is not None else settings.default_temperature
         max_tokens = max_tokens or settings.default_max_tokens
 
+        # SECURITY FIX: Apply prompt sanitization to streaming endpoint (CVE-010)
+        from app.security.prompt_sanitizer import PromptSanitizer
+
+        try:
+            sanitized_prompt = PromptSanitizer.sanitize_prompt(prompt)
+            sanitized_system = None
+            if system_prompt:
+                sanitized_system = PromptSanitizer.validate_agent_prompt(system_prompt)
+        except ValueError as e:
+            logger.warning(f"Potential prompt injection detected in streaming: {e}")
+            raise RuntimeError("Invalid prompt content detected")
+
         try:
             logger.debug(f"Streaming with model {model}")
 
@@ -232,8 +244,8 @@ class LLMService:
                 model=model,
                 max_tokens=max_tokens,
                 temperature=temperature,
-                system=system_prompt if system_prompt else "",
-                messages=[{"role": "user", "content": prompt}],
+                system=sanitized_system if sanitized_system else "",
+                messages=[{"role": "user", "content": sanitized_prompt}],
                 **kwargs,
             ) as stream:
                 async for text in stream.text_stream:
