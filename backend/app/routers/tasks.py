@@ -117,10 +117,21 @@ async def update_task(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    # Update fields
+    # SECURITY FIX: Use explicit field updates instead of unsafe setattr() (CVE-003)
+    # Only allow updating specific fields that are safe to modify
     update_data = task_data.model_dump(exclude_unset=True)
+
+    # Whitelist of fields that can be updated
+    allowed_fields = {'title', 'description', 'priority', 'status'}
+
     for field, value in update_data.items():
-        setattr(task, field, value)
+        if field in allowed_fields:
+            setattr(task, field, value)
+        else:
+            # Log attempts to update restricted fields
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Attempted to update restricted field: {field}")
 
     await db.commit()
     await db.refresh(task)
