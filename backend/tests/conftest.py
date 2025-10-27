@@ -133,3 +133,51 @@ async def test_app(test_engine, test_session):
     app.state.limiter = mock_limiter
 
     return app
+
+
+@pytest.fixture
+async def client(test_app):
+    """Create AsyncClient for integration tests."""
+    from httpx import AsyncClient
+
+    async with AsyncClient(app=test_app, base_url="http://test", follow_redirects=True) as ac:
+        yield ac
+
+
+@pytest.fixture
+def db_session(test_session):
+    """Alias for test_session to match test expectations."""
+    return test_session
+
+
+@pytest.fixture
+def auth_headers():
+    """Provide auth headers for tests (authentication is mocked in test_app)."""
+    return {"Authorization": "Bearer mock-token"}
+
+
+@pytest.fixture
+async def sample_agent(test_session):
+    """Create a sample agent for testing."""
+    from app.models.agent import AgentType, AgentStatus
+
+    agent = Agent(
+        id="test-agent-123",
+        name="Test Agent",
+        description="A test agent for integration tests",
+        agent_type=AgentType.CONVERSATIONAL,
+        model="claude-3-5-sonnet-20241022",
+        system_prompt="You are a helpful test agent.",
+        status=AgentStatus.ACTIVE,
+        temperature=0.7,
+        max_tokens=1000,
+    )
+    test_session.add(agent)
+    await test_session.commit()
+    await test_session.refresh(agent)
+
+    yield agent
+
+    # Cleanup
+    await test_session.delete(agent)
+    await test_session.commit()
