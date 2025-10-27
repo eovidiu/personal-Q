@@ -26,7 +26,7 @@ async def test_task_started_broadcast(db_session, sample_agent):
     await db_session.commit()
 
     # Mock the broadcast_event function
-    with patch("app.workers.tasks.broadcast_event", new_callable=AsyncMock) as mock_broadcast:
+    with patch("app.routers.websocket.broadcast_event", new_callable=AsyncMock) as mock_broadcast:
         # Mock CrewService to prevent actual execution
         with patch(
             "app.workers.tasks.CrewService.execute_agent_task", new_callable=AsyncMock
@@ -70,7 +70,7 @@ async def test_task_completed_broadcast(db_session, sample_agent):
     await db_session.commit()
 
     # Mock the broadcast_event function
-    with patch("app.workers.tasks.broadcast_event", new_callable=AsyncMock) as mock_broadcast:
+    with patch("app.routers.websocket.broadcast_event", new_callable=AsyncMock) as mock_broadcast:
         # Mock CrewService to return success
         with patch(
             "app.workers.tasks.CrewService.execute_agent_task", new_callable=AsyncMock
@@ -111,7 +111,7 @@ async def test_task_failed_broadcast_on_error(db_session, sample_agent):
     await db_session.commit()
 
     # Mock the broadcast_event function
-    with patch("app.workers.tasks.broadcast_event", new_callable=AsyncMock) as mock_broadcast:
+    with patch("app.routers.websocket.broadcast_event", new_callable=AsyncMock) as mock_broadcast:
         # Mock CrewService to return failure
         with patch(
             "app.workers.tasks.CrewService.execute_agent_task", new_callable=AsyncMock
@@ -151,7 +151,7 @@ async def test_task_failed_broadcast_on_exception(db_session, sample_agent):
     await db_session.commit()
 
     # Mock the broadcast_event function
-    with patch("app.workers.tasks.broadcast_event", new_callable=AsyncMock) as mock_broadcast:
+    with patch("app.routers.websocket.broadcast_event", new_callable=AsyncMock) as mock_broadcast:
         # Mock CrewService to raise exception
         with patch(
             "app.workers.tasks.CrewService.execute_agent_task", new_callable=AsyncMock

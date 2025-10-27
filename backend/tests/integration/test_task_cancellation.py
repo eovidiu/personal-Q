@@ -154,7 +154,7 @@ async def test_cancel_task_revokes_celery_task(
     await db_session.commit()
 
     # Mock Celery app control
-    with patch("app.routers.tasks.celery_app") as mock_celery:
+    with patch("app.workers.celery_app.celery_app") as mock_celery:
         mock_control = MagicMock()
         mock_celery.control = mock_control
 
@@ -185,7 +185,7 @@ async def test_cancel_task_broadcasts_websocket_event(
     await db_session.commit()
 
     # Mock broadcast_event
-    with patch("app.routers.tasks.broadcast_event", new_callable=AsyncMock) as mock_broadcast:
+    with patch("app.routers.websocket.broadcast_event", new_callable=AsyncMock) as mock_broadcast:
         # Cancel the task
         response = await client.post(f"/api/v1/tasks/{task.id}/cancel", headers=auth_headers)
 
