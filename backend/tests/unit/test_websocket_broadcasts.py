@@ -33,14 +33,12 @@ async def test_task_started_broadcast(db_session, sample_agent):
         ) as mock_crew:
             mock_crew.return_value = {"success": True, "output": "Test output"}
 
-            # Execute task (need to mock the Celery request context)
-            class MockRequest:
-                id = "celery-task-123"
+            # Mock the Celery task context
+            with patch.object(execute_agent_task, "request") as mock_request:
+                mock_request.id = "celery-task-123"
 
-            mock_self = type("MockSelf", (), {"request": MockRequest()})()
-
-            # Execute the task
-            await execute_agent_task.run(mock_self, task.id)
+                # Execute the task directly
+                await execute_agent_task(task.id)
 
             # Verify task_started was broadcast
             calls = mock_broadcast.call_args_list
@@ -77,12 +75,12 @@ async def test_task_completed_broadcast(db_session, sample_agent):
         ) as mock_crew:
             mock_crew.return_value = {"success": True, "output": "Completed successfully"}
 
-            # Execute task
-            class MockRequest:
-                id = "celery-task-456"
+            # Mock the Celery task context
+            with patch.object(execute_agent_task, "request") as mock_request:
+                mock_request.id = "celery-task-456"
 
-            mock_self = type("MockSelf", (), {"request": MockRequest()})()
-            await execute_agent_task.run(mock_self, task.id)
+                # Execute the task directly
+                await execute_agent_task(task.id)
 
             # Verify task_completed was broadcast
             calls = mock_broadcast.call_args_list
@@ -118,12 +116,12 @@ async def test_task_failed_broadcast_on_error(db_session, sample_agent):
         ) as mock_crew:
             mock_crew.return_value = {"success": False, "error": "Execution failed"}
 
-            # Execute task
-            class MockRequest:
-                id = "celery-task-789"
+            # Mock the Celery task context
+            with patch.object(execute_agent_task, "request") as mock_request:
+                mock_request.id = "celery-task-789"
 
-            mock_self = type("MockSelf", (), {"request": MockRequest()})()
-            await execute_agent_task.run(mock_self, task.id)
+                # Execute the task directly
+                await execute_agent_task(task.id)
 
             # Verify task_failed was broadcast
             calls = mock_broadcast.call_args_list
@@ -158,12 +156,12 @@ async def test_task_failed_broadcast_on_exception(db_session, sample_agent):
         ) as mock_crew:
             mock_crew.side_effect = Exception("Unexpected error")
 
-            # Execute task
-            class MockRequest:
-                id = "celery-task-999"
+            # Mock the Celery task context
+            with patch.object(execute_agent_task, "request") as mock_request:
+                mock_request.id = "celery-task-999"
 
-            mock_self = type("MockSelf", (), {"request": MockRequest()})()
-            await execute_agent_task.run(mock_self, task.id)
+                # Execute the task directly
+                await execute_agent_task(task.id)
 
             # Verify task_failed was broadcast
             calls = mock_broadcast.call_args_list
