@@ -2,7 +2,7 @@
 Unit tests for WebSocket broadcast functionality in task lifecycle.
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from app.models.task import Task as TaskModel
@@ -33,15 +33,12 @@ async def test_task_started_broadcast(db_session, sample_agent):
         ) as mock_crew:
             mock_crew.return_value = {"success": True, "output": "Test output"}
 
-            # Create mock task instance with request context
-            class MockRequest:
-                id = "celery-task-123"
+            # Create mock Celery task context
+            mock_task_self = Mock()
+            mock_task_self.request.id = "celery-task-123"
 
-            class MockTask:
-                request = MockRequest()
-
-            # Execute the task with mock context
-            await execute_agent_task.__wrapped__(MockTask(), task.id)
+            # Call the unwrapped function directly with mock self
+            await execute_agent_task.__wrapped__(mock_task_self, task.id)
 
             # Verify task_started was broadcast
             calls = mock_broadcast.call_args_list
@@ -78,15 +75,12 @@ async def test_task_completed_broadcast(db_session, sample_agent):
         ) as mock_crew:
             mock_crew.return_value = {"success": True, "output": "Completed successfully"}
 
-            # Create mock task instance with request context
-            class MockRequest:
-                id = "celery-task-456"
+            # Create mock Celery task context
+            mock_task_self = Mock()
+            mock_task_self.request.id = "celery-task-456"
 
-            class MockTask:
-                request = MockRequest()
-
-            # Execute the task with mock context
-            await execute_agent_task.__wrapped__(MockTask(), task.id)
+            # Call the unwrapped function directly with mock self
+            await execute_agent_task.__wrapped__(mock_task_self, task.id)
 
             # Verify task_completed was broadcast
             calls = mock_broadcast.call_args_list
@@ -122,15 +116,12 @@ async def test_task_failed_broadcast_on_error(db_session, sample_agent):
         ) as mock_crew:
             mock_crew.return_value = {"success": False, "error": "Execution failed"}
 
-            # Create mock task instance with request context
-            class MockRequest:
-                id = "celery-task-789"
+            # Create mock Celery task context
+            mock_task_self = Mock()
+            mock_task_self.request.id = "celery-task-789"
 
-            class MockTask:
-                request = MockRequest()
-
-            # Execute the task with mock context
-            await execute_agent_task.__wrapped__(MockTask(), task.id)
+            # Call the unwrapped function directly with mock self
+            await execute_agent_task.__wrapped__(mock_task_self, task.id)
 
             # Verify task_failed was broadcast
             calls = mock_broadcast.call_args_list
@@ -165,15 +156,12 @@ async def test_task_failed_broadcast_on_exception(db_session, sample_agent):
         ) as mock_crew:
             mock_crew.side_effect = Exception("Unexpected error")
 
-            # Create mock task instance with request context
-            class MockRequest:
-                id = "celery-task-999"
+            # Create mock Celery task context
+            mock_task_self = Mock()
+            mock_task_self.request.id = "celery-task-999"
 
-            class MockTask:
-                request = MockRequest()
-
-            # Execute the task with mock context
-            await execute_agent_task.__wrapped__(MockTask(), task.id)
+            # Call the unwrapped function directly with mock self
+            await execute_agent_task.__wrapped__(mock_task_self, task.id)
 
             # Verify task_failed was broadcast
             calls = mock_broadcast.call_args_list
