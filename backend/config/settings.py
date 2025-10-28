@@ -64,6 +64,49 @@ class Settings(BaseSettings):
     jwt_secret_key: Optional[str] = None
     allowed_email: Optional[str] = None  # Single user email allowed to authenticate
 
+    @field_validator("encryption_key")
+    @classmethod
+    def validate_encryption_key(cls, v: Optional[str], info) -> Optional[str]:
+        """
+        Validate ENCRYPTION_KEY is set in production.
+
+        SECURITY FIX (HIGH-002): Enforce encryption key requirement
+        - Required in production for encrypting API keys
+        - Must be a valid Fernet key (44 characters, base64url encoded)
+        - Auto-generate in development with warning
+        """
+        env = info.data.get("env", "development")
+
+        if env == "production":
+            if not v:
+                raise ValueError(
+                    "ENCRYPTION_KEY is required in production for encrypting API keys. "
+                    "Generate a Fernet key with: "
+                    "python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'"
+                )
+
+            # Validate it's a proper Fernet key
+            if len(v) != 44 or not v.endswith("="):
+                raise ValueError(
+                    "ENCRYPTION_KEY must be a valid Fernet key (44 characters, base64url encoded). "
+                    "Generate with: "
+                    "python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'"
+                )
+
+        elif not v:
+            # Development: Generate key with warning
+            from cryptography.fernet import Fernet
+
+            generated_key = Fernet.generate_key().decode()
+            logger.warning(
+                "⚠️  ENCRYPTION_KEY not set. Generated a random key for this session. "
+                "For persistence, set ENCRYPTION_KEY in .env with: "
+                f"ENCRYPTION_KEY={generated_key}"
+            )
+            return generated_key
+
+        return v
+
     @field_validator("jwt_secret_key")
     @classmethod
     def validate_jwt_secret(cls, v: Optional[str], info) -> Optional[str]:
@@ -83,6 +126,7 @@ class Settings(BaseSettings):
                 # SECURITY FIX: Never use hardcoded secrets (CVE-002)
                 # Generate a unique secret for each instance
                 import secrets
+
                 generated_secret = secrets.token_urlsafe(32)
                 logger.warning(
                     "⚠️  JWT_SECRET_KEY not set. Generated a random secret for this session. "
