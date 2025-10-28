@@ -117,6 +117,7 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         # Wait for authentication message
         import asyncio
+
         try:
             # Give client 10 seconds to authenticate
             auth_data = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
@@ -130,22 +131,30 @@ async def websocket_endpoint(websocket: WebSocket):
                     authenticated = True
                     logger.info(f"WebSocket authenticated for user: {user.get('email')}")
                     await manager.connect(websocket)
-                    await websocket.send_json({"status": "authenticated", "user": user.get("email")})
+                    await websocket.send_json(
+                        {"status": "authenticated", "user": user.get("email")}
+                    )
                 else:
                     logger.warning("WebSocket authentication failed: Invalid token")
                     await websocket.send_json({"error": "Authentication failed"})
-                    await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token")
+                    await websocket.close(
+                        code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token"
+                    )
                     return
             else:
                 logger.warning("WebSocket: First message must be authentication")
                 await websocket.send_json({"error": "Authentication required"})
-                await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication required")
+                await websocket.close(
+                    code=status.WS_1008_POLICY_VIOLATION, reason="Authentication required"
+                )
                 return
 
         except asyncio.TimeoutError:
             logger.warning("WebSocket: Authentication timeout")
             await websocket.send_json({"error": "Authentication timeout"})
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication timeout")
+            await websocket.close(
+                code=status.WS_1008_POLICY_VIOLATION, reason="Authentication timeout"
+            )
             return
         except json.JSONDecodeError:
             await websocket.send_json({"error": "Invalid authentication message"})

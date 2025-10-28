@@ -39,22 +39,22 @@ def sanitize_error_for_client(error: Exception) -> str:
 
     # Remove sensitive patterns
     sensitive_patterns = [
-        r'/[\w/]+\.py',  # File paths
-        r'line \d+',  # Line numbers
+        r"/[\w/]+\.py",  # File paths
+        r"line \d+",  # Line numbers
         r'api[_-]?key["\']?\s*[:=]\s*["\']\w+["\']',  # API keys
         r'password["\']?\s*[:=]\s*["\']\w+["\']',  # Passwords
         r'token["\']?\s*[:=]\s*["\']\w+["\']',  # Tokens
         r'secret["\']?\s*[:=]\s*["\']\w+["\']',  # Secrets
-        r'localhost:\d+',  # Internal endpoints
-        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}',  # IP addresses
+        r"localhost:\d+",  # Internal endpoints
+        r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}",  # IP addresses
     ]
 
     sanitized = error_str
     for pattern in sensitive_patterns:
-        sanitized = re.sub(pattern, '[REDACTED]', sanitized, flags=re.IGNORECASE)
+        sanitized = re.sub(pattern, "[REDACTED]", sanitized, flags=re.IGNORECASE)
 
     # If the error is still too detailed, return generic message
-    if len(sanitized) > 200 or '[REDACTED]' in sanitized:
+    if len(sanitized) > 200 or "[REDACTED]" in sanitized:
         return "An error occurred. Please try again or contact support."
 
     return sanitized
@@ -74,24 +74,25 @@ def sanitize_prompt(prompt: str, system_prompt: Optional[str] = None) -> tuple[s
     Raises:
         ValueError: If dangerous injection patterns are detected
     """
+
     def check_and_sanitize(text: str, context: str = "prompt") -> str:
         if not text:
             return text
 
         # Remove control characters
-        text = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', text)
+        text = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", text)
 
         # Dangerous patterns that should be blocked
         dangerous_patterns = [
-            (r'(?i)(system|assistant|user)\s*:', "Role hijacking attempt"),
-            (r'<\|im_start\|>.*?<\|im_end\|>', "Token smuggling attempt"),
-            (r'###\s*(system|instruction|assistant)', "Instruction override attempt"),
-            (r'(?i)ignore\s+(all\s+)?previous\s+instructions', "Instruction bypass attempt"),
-            (r'(?i)forget\s+everything', "Context reset attempt"),
-            (r'(?i)you\s+are\s+now\s+(a|an|the)', "Identity override attempt"),
-            (r'(?i)disregard\s+(all\s+)?safety', "Safety bypass attempt"),
-            (r'(?i)output\s+all\s+(api\s+)?keys', "Credential extraction attempt"),
-            (r'(?i)reveal\s+your\s+instructions', "Instruction extraction attempt"),
+            (r"(?i)(system|assistant|user)\s*:", "Role hijacking attempt"),
+            (r"<\|im_start\|>.*?<\|im_end\|>", "Token smuggling attempt"),
+            (r"###\s*(system|instruction|assistant)", "Instruction override attempt"),
+            (r"(?i)ignore\s+(all\s+)?previous\s+instructions", "Instruction bypass attempt"),
+            (r"(?i)forget\s+everything", "Context reset attempt"),
+            (r"(?i)you\s+are\s+now\s+(a|an|the)", "Identity override attempt"),
+            (r"(?i)disregard\s+(all\s+)?safety", "Safety bypass attempt"),
+            (r"(?i)output\s+all\s+(api\s+)?keys", "Credential extraction attempt"),
+            (r"(?i)reveal\s+your\s+instructions", "Instruction extraction attempt"),
         ]
 
         for pattern, description in dangerous_patterns:
@@ -101,10 +102,10 @@ def sanitize_prompt(prompt: str, system_prompt: Optional[str] = None) -> tuple[s
 
         # Warning patterns (log but allow)
         warning_patterns = [
-            r'(?i)pretend\s+to\s+be',
-            r'(?i)act\s+as\s+if',
-            r'(?i)simulate',
-            r'(?i)roleplay',
+            r"(?i)pretend\s+to\s+be",
+            r"(?i)act\s+as\s+if",
+            r"(?i)simulate",
+            r"(?i)roleplay",
         ]
 
         for pattern in warning_patterns:
@@ -209,7 +210,7 @@ def validate_websocket_message_size(message: Dict[str, Any], max_size_kb: int = 
 
     try:
         message_str = json.dumps(message)
-        size_kb = len(message_str.encode('utf-8')) / 1024
+        size_kb = len(message_str.encode("utf-8")) / 1024
 
         if size_kb > max_size_kb:
             logger.warning(f"WebSocket message too large: {size_kb:.2f}KB > {max_size_kb}KB")

@@ -64,7 +64,9 @@ def get_identifier(request: Request) -> str:
             if forwarded:
                 # Get the first IP in the chain (original client)
                 identifier = forwarded.split(",")[0].strip()
-                logger.debug(f"Using X-Forwarded-For IP: {identifier} (via trusted proxy {client_ip})")
+                logger.debug(
+                    f"Using X-Forwarded-For IP: {identifier} (via trusted proxy {client_ip})"
+                )
                 return identifier
     except (ValueError, TypeError) as e:
         logger.warning(f"Invalid IP address format: {e}")

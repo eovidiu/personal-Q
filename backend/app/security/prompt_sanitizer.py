@@ -29,20 +29,17 @@ class PromptSanitizer:
 
     # Special tokens that should be removed
     SPECIAL_TOKENS = [
-        r'<\|.*?\|>',  # Anthropic-style tokens
-        r'\[\[.*?\]\]',  # Bracket markers
-        r'---+[^-]*?---+',  # Section dividers
-        r'system\s*:\s*',  # System role injection
-        r'assistant\s*:\s*',  # Assistant role injection
-        r'human\s*:\s*',  # Human role injection
+        r"<\|.*?\|>",  # Anthropic-style tokens
+        r"\[\[.*?\]\]",  # Bracket markers
+        r"---+[^-]*?---+",  # Section dividers
+        r"system\s*:\s*",  # System role injection
+        r"assistant\s*:\s*",  # Assistant role injection
+        r"human\s*:\s*",  # Human role injection
     ]
 
     @classmethod
     def sanitize_prompt(
-        cls,
-        user_input: str,
-        max_length: int = 10000,
-        raise_on_detection: bool = False
+        cls, user_input: str, max_length: int = 10000, raise_on_detection: bool = False
     ) -> str:
         """
         Sanitize user input before sending to LLM.
@@ -85,7 +82,7 @@ class PromptSanitizer:
         user_input = user_input.replace("\x00", "")  # Remove null bytes
 
         # Remove excessive whitespace
-        user_input = re.sub(r'\s+', ' ', user_input).strip()
+        user_input = re.sub(r"\s+", " ", user_input).strip()
 
         return user_input
 
@@ -138,11 +135,7 @@ RESPONSE (staying within security boundaries):
             Sanitized system prompt
         """
         # More strict validation for system prompts
-        sanitized = cls.sanitize_prompt(
-            system_prompt,
-            max_length=5000,
-            raise_on_detection=False
-        )
+        sanitized = cls.sanitize_prompt(system_prompt, max_length=5000, raise_on_detection=False)
 
         # Ensure prompt doesn't try to override security
         security_override_patterns = [
@@ -170,8 +163,4 @@ RESPONSE (staying within security boundaries):
         Returns:
             Sanitized task description
         """
-        return cls.sanitize_prompt(
-            task_description,
-            max_length=2000,
-            raise_on_detection=False
-        )
+        return cls.sanitize_prompt(task_description, max_length=2000, raise_on_detection=False)

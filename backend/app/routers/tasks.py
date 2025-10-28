@@ -122,7 +122,7 @@ async def update_task(
     update_data = task_data.model_dump(exclude_unset=True)
 
     # Whitelist of fields that can be updated
-    allowed_fields = {'title', 'description', 'priority', 'status'}
+    allowed_fields = {"title", "description", "priority", "status"}
 
     for field, value in update_data.items():
         if field in allowed_fields:
@@ -130,6 +130,7 @@ async def update_task(
         else:
             # Log attempts to update restricted fields
             import logging
+
             logger = logging.getLogger(__name__)
             logger.warning(f"Attempted to update restricted field: {field}")
 
