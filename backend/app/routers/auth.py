@@ -10,13 +10,13 @@ from datetime import timedelta
 from typing import Optional
 
 import jwt
+from app.middleware.rate_limit import limiter
 from app.utils.datetime_utils import utcnow
 from authlib.integrations.starlette_client import OAuth
 from config.settings import settings
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from starlette.config import Config
-from app.middleware.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 

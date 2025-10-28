@@ -3,9 +3,9 @@ LLM Prompt Sanitization Module
 Provides security filtering for user inputs before sending to LLMs.
 """
 
+import logging
 import re
 from typing import Optional
-import logging
 
 logger = logging.getLogger(__name__)
 
