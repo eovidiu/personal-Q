@@ -18,6 +18,7 @@ from app.workers.tasks import execute_agent_task
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 router = APIRouter()
 
@@ -151,32 +152,56 @@ async def cancel_task(
     """
     Cancel a running or pending task.
 
+    Security improvements:
+    - Verifies task ownership (HIGH-005: Authorization bypass fix)
+    - Uses atomic transaction with row locking (MEDIUM-010: Race condition fix)
     - Revokes the Celery task if it's running
     - Updates task status to CANCELLED
     - Broadcasts cancellation event via WebSocket
     """
-    result = await db.execute(select(TaskModel).where(TaskModel.id == task_id))
-    task = result.scalar_one_or_none()
-
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    # Only allow cancellation of pending or running tasks
-    if task.status not in [TaskStatus.PENDING, TaskStatus.RUNNING]:
-        raise HTTPException(
-            status_code=400, detail=f"Cannot cancel task with status {task.status.value}"
+    # SECURITY FIX (MEDIUM-010): Use transaction with row locking to prevent race condition
+    async with db.begin_nested():
+        # Fetch task with row lock and agent relationship for ownership check
+        # with_for_update() prevents concurrent modifications (TOCTOU fix)
+        result = await db.execute(
+            select(TaskModel)
+            .where(TaskModel.id == task_id)
+            .where(TaskModel.status.in_([TaskStatus.PENDING, TaskStatus.RUNNING]))
+            .options(selectinload(TaskModel.agent))
+            .with_for_update()
         )
+        task = result.scalar_one_or_none()
 
-    # Revoke Celery task if it exists
-    if task.celery_task_id:
-        from app.workers.celery_app import celery_app
+        if not task:
+            # Check if task exists but is not cancellable
+            check_result = await db.execute(select(TaskModel).where(TaskModel.id == task_id))
+            existing_task = check_result.scalar_one_or_none()
 
-        celery_app.control.revoke(task.celery_task_id, terminate=True)
+            if not existing_task:
+                raise HTTPException(status_code=404, detail="Task not found")
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot cancel task with status {existing_task.status.value}",
+                )
 
-    # Update task status
-    task.status = TaskStatus.CANCELLED
-    task.completed_at = utcnow()
+        # SECURITY FIX (HIGH-005): Verify task ownership before allowing cancellation
+        from app.utils.security_helpers import verify_task_ownership
 
+        if not verify_task_ownership(task, current_user):
+            raise HTTPException(status_code=403, detail="Not authorized to cancel this task")
+
+        # Revoke Celery task if it exists
+        if task.celery_task_id:
+            from app.workers.celery_app import celery_app
+
+            celery_app.control.revoke(task.celery_task_id, terminate=True)
+
+        # Update task status atomically
+        task.status = TaskStatus.CANCELLED
+        task.completed_at = utcnow()
+
+    # Commit happens automatically when exiting the nested transaction
     await db.commit()
     await db.refresh(task)
 

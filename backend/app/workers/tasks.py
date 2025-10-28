@@ -107,6 +107,15 @@ async def execute_agent_task(self, task_id: str):
             await db.commit()
 
             # Broadcast task completion event
+            # SECURITY FIX (MEDIUM-009): Sanitize error messages before broadcasting
+            from app.utils.security_helpers import classify_error_type, sanitize_error_for_client
+
+            sanitized_error = None
+            error_type = None
+            if not result["success"] and task.error_message:
+                sanitized_error = sanitize_error_for_client(Exception(task.error_message))
+                error_type = classify_error_type(Exception(task.error_message))
+
             event_type = "task_completed" if result["success"] else "task_failed"
             await broadcast_event(
                 event_type,
@@ -116,7 +125,8 @@ async def execute_agent_task(self, task_id: str):
                     "title": task.title,
                     "status": task.status.value,
                     "output_data": task.output_data,
-                    "error_message": task.error_message,
+                    "error_message": sanitized_error,  # Sanitized error message
+                    "error_type": error_type,  # Error classification for client handling
                     "execution_time_seconds": task.execution_time_seconds,
                     "completed_at": task.completed_at.isoformat() if task.completed_at else None,
                 },
@@ -132,7 +142,20 @@ async def execute_agent_task(self, task_id: str):
             agent.tasks_failed += 1
             await db.commit()
 
-            # Broadcast task failure event
+            # SECURITY FIX (MEDIUM-009): Sanitize error before broadcasting to WebSocket
+            import logging
+
+            from app.utils.security_helpers import classify_error_type, sanitize_error_for_client
+
+            logger = logging.getLogger(__name__)
+
+            sanitized_error = sanitize_error_for_client(e)
+            error_type = classify_error_type(e)
+
+            # Log full error server-side for debugging
+            logger.error(f"Task {task.id} failed with exception: {str(e)}", exc_info=True)
+
+            # Broadcast task failure event with sanitized error
             await broadcast_event(
                 "task_failed",
                 {
@@ -140,7 +163,8 @@ async def execute_agent_task(self, task_id: str):
                     "agent_id": task.agent_id,
                     "title": task.title,
                     "status": "failed",
-                    "error_message": str(e),
+                    "error_message": sanitized_error,  # User-friendly sanitized message
+                    "error_type": error_type,  # Error classification for client handling
                     "completed_at": task.completed_at.isoformat() if task.completed_at else None,
                 },
             )
