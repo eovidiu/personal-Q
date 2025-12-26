@@ -1,15 +1,22 @@
 """
-ABOUTME: Memory service using ChromaDB with proper async/await support.
-ABOUTME: All ChromaDB operations run in executor to avoid blocking event loop.
+ABOUTME: Memory service using LanceDB with proper async/await support.
+ABOUTME: All LanceDB operations run in executor to avoid blocking event loop.
+ABOUTME: Uses sentence-transformers for local embeddings (no API calls needed).
 """
 
 import asyncio
+import json
 import logging
 import uuid
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any, Dict, List, Optional
 
-from app.db.chroma_client import get_chroma_client
+from app.db.lance_client import (
+    AgentOutputSchema,
+    ConversationSchema,
+    DocumentSchema,
+    get_lance_client,
+)
 from app.utils.datetime_utils import utcnow
 from config.settings import settings
 
@@ -20,10 +27,16 @@ class MemoryService:
     """Service for agent memory and context management with async support."""
 
     def __init__(self):
-        self.chroma = get_chroma_client()
-        self.conversations_collection = self.chroma.get_or_create_collection("conversations")
-        self.outputs_collection = self.chroma.get_or_create_collection("agent_outputs")
-        self.documents_collection = self.chroma.get_or_create_collection("documents")
+        self.lance = get_lance_client()
+        self.conversations_table = self.lance.get_or_create_table(
+            "conversations", ConversationSchema
+        )
+        self.outputs_table = self.lance.get_or_create_table(
+            "agent_outputs", AgentOutputSchema
+        )
+        self.documents_table = self.lance.get_or_create_table(
+            "documents", DocumentSchema
+        )
 
     async def store_conversation(
         self, agent_id: str, message: str, role: str = "user", metadata: Dict[str, Any] = None
@@ -43,15 +56,17 @@ class MemoryService:
         memory_id = str(uuid.uuid4())
         timestamp = utcnow().isoformat()
 
-        # Run ChromaDB operation in executor
-        await asyncio.to_thread(
-            self.conversations_collection.add,
-            documents=[message],
-            metadatas=[
-                {"agent_id": agent_id, "role": role, "timestamp": timestamp, **(metadata or {})}
-            ],
-            ids=[memory_id],
-        )
+        data = {
+            "id": memory_id,
+            "text": message,
+            "agent_id": agent_id,
+            "role": role,
+            "timestamp": timestamp,
+            "metadata_json": json.dumps(metadata) if metadata else None,
+        }
+
+        # Run LanceDB operation in executor
+        await asyncio.to_thread(self.conversations_table.add, [data])
 
         return memory_id
 
@@ -73,20 +88,17 @@ class MemoryService:
         memory_id = str(uuid.uuid4())
         timestamp = utcnow().isoformat()
 
-        # Run ChromaDB operation in executor
-        await asyncio.to_thread(
-            self.outputs_collection.add,
-            documents=[output],
-            metadatas=[
-                {
-                    "agent_id": agent_id,
-                    "task_id": task_id,
-                    "timestamp": timestamp,
-                    **(metadata or {}),
-                }
-            ],
-            ids=[memory_id],
-        )
+        data = {
+            "id": memory_id,
+            "text": output,
+            "agent_id": agent_id,
+            "task_id": task_id,
+            "timestamp": timestamp,
+            "metadata_json": json.dumps(metadata) if metadata else None,
+        }
+
+        # Run LanceDB operation in executor
+        await asyncio.to_thread(self.outputs_table.add, [data])
 
         return memory_id
 
@@ -107,13 +119,16 @@ class MemoryService:
         doc_id = str(uuid.uuid4())
         timestamp = utcnow().isoformat()
 
-        # Run ChromaDB operation in executor
-        await asyncio.to_thread(
-            self.documents_collection.add,
-            documents=[content],
-            metadatas=[{"source": source, "timestamp": timestamp, **(metadata or {})}],
-            ids=[doc_id],
-        )
+        data = {
+            "id": doc_id,
+            "text": content,
+            "source": source,
+            "timestamp": timestamp,
+            "metadata_json": json.dumps(metadata) if metadata else None,
+        }
+
+        # Run LanceDB operation in executor
+        await asyncio.to_thread(self.documents_table.add, [data])
 
         return doc_id
 
@@ -131,27 +146,29 @@ class MemoryService:
         Returns:
             List of matching conversations
         """
-        where_filter = {"agent_id": agent_id} if agent_id else None
 
-        # Run ChromaDB query in executor
-        results = await asyncio.to_thread(
-            self.conversations_collection.query,
-            query_texts=[query],
-            n_results=limit,
-            where=where_filter,
-        )
+        def _search():
+            search_query = self.conversations_table.search(query).limit(limit)
+            if agent_id:
+                search_query = search_query.where(f"agent_id = '{agent_id}'")
+            return search_query.to_list()
+
+        # Run LanceDB query in executor
+        results = await asyncio.to_thread(_search)
 
         # Format results
         conversations = []
-        if results["documents"]:
-            for i, doc in enumerate(results["documents"][0]):
-                conversations.append(
-                    {
-                        "content": doc,
-                        "metadata": results["metadatas"][0][i] if results["metadatas"] else {},
-                        "distance": results["distances"][0][i] if results["distances"] else None,
-                    }
-                )
+        for row in results:
+            metadata = {"agent_id": row["agent_id"], "role": row["role"], "timestamp": row["timestamp"]}
+            if row.get("metadata_json"):
+                metadata.update(json.loads(row["metadata_json"]))
+            conversations.append(
+                {
+                    "content": row["text"],
+                    "metadata": metadata,
+                    "distance": row.get("_distance"),
+                }
+            )
 
         return conversations
 
@@ -174,31 +191,43 @@ class MemoryService:
         Returns:
             List of matching outputs
         """
-        where_filter = {}
-        if agent_id:
-            where_filter["agent_id"] = agent_id
-        if task_id:
-            where_filter["task_id"] = task_id
 
-        # Run ChromaDB query in executor
-        results = await asyncio.to_thread(
-            self.outputs_collection.query,
-            query_texts=[query],
-            n_results=limit,
-            where=where_filter if where_filter else None,
-        )
+        def _search():
+            search_query = self.outputs_table.search(query).limit(limit)
+
+            # Build filter conditions
+            conditions = []
+            if agent_id:
+                conditions.append(f"agent_id = '{agent_id}'")
+            if task_id:
+                conditions.append(f"task_id = '{task_id}'")
+
+            if conditions:
+                where_clause = " AND ".join(conditions)
+                search_query = search_query.where(where_clause)
+
+            return search_query.to_list()
+
+        # Run LanceDB query in executor
+        results = await asyncio.to_thread(_search)
 
         # Format results
         outputs = []
-        if results["documents"]:
-            for i, doc in enumerate(results["documents"][0]):
-                outputs.append(
-                    {
-                        "content": doc,
-                        "metadata": results["metadatas"][0][i] if results["metadatas"] else {},
-                        "distance": results["distances"][0][i] if results["distances"] else None,
-                    }
-                )
+        for row in results:
+            metadata = {
+                "agent_id": row["agent_id"],
+                "task_id": row["task_id"],
+                "timestamp": row["timestamp"],
+            }
+            if row.get("metadata_json"):
+                metadata.update(json.loads(row["metadata_json"]))
+            outputs.append(
+                {
+                    "content": row["text"],
+                    "metadata": metadata,
+                    "distance": row.get("_distance"),
+                }
+            )
 
         return outputs
 
@@ -213,22 +242,26 @@ class MemoryService:
         Returns:
             List of matching documents
         """
-        # Run ChromaDB query in executor
-        results = await asyncio.to_thread(
-            self.documents_collection.query, query_texts=[query], n_results=limit
-        )
+
+        def _search():
+            return self.documents_table.search(query).limit(limit).to_list()
+
+        # Run LanceDB query in executor
+        results = await asyncio.to_thread(_search)
 
         # Format results
         documents = []
-        if results["documents"]:
-            for i, doc in enumerate(results["documents"][0]):
-                documents.append(
-                    {
-                        "content": doc,
-                        "metadata": results["metadatas"][0][i] if results["metadatas"] else {},
-                        "distance": results["distances"][0][i] if results["distances"] else None,
-                    }
-                )
+        for row in results:
+            metadata = {"source": row["source"], "timestamp": row["timestamp"]}
+            if row.get("metadata_json"):
+                metadata.update(json.loads(row["metadata_json"]))
+            documents.append(
+                {
+                    "content": row["text"],
+                    "metadata": metadata,
+                    "distance": row.get("_distance"),
+                }
+            )
 
         return documents
 
@@ -245,22 +278,32 @@ class MemoryService:
         Returns:
             List of recent conversations
         """
-        # Run ChromaDB query in executor
-        results = await asyncio.to_thread(
-            self.conversations_collection.get, where={"agent_id": agent_id}, limit=limit
-        )
+
+        def _get_history():
+            # Use search without vector query to get filtered results
+            return (
+                self.conversations_table.search()
+                .where(f"agent_id = '{agent_id}'")
+                .limit(limit)
+                .to_list()
+            )
+
+        # Run LanceDB query in executor
+        results = await asyncio.to_thread(_get_history)
 
         # Format results
         conversations = []
-        if results["documents"]:
-            for i, doc in enumerate(results["documents"]):
-                conversations.append(
-                    {
-                        "id": results["ids"][i],
-                        "content": doc,
-                        "metadata": results["metadatas"][i] if results["metadatas"] else {},
-                    }
-                )
+        for row in results:
+            metadata = {"agent_id": row["agent_id"], "role": row["role"], "timestamp": row["timestamp"]}
+            if row.get("metadata_json"):
+                metadata.update(json.loads(row["metadata_json"]))
+            conversations.append(
+                {
+                    "id": row["id"],
+                    "content": row["text"],
+                    "metadata": metadata,
+                }
+            )
 
         return conversations
 
@@ -280,18 +323,31 @@ class MemoryService:
 
         deleted_count = 0
 
-        # Clean conversations
-        def _cleanup_collection(collection):
-            count = 0
-            results = collection.get(where={"timestamp": {"$lt": cutoff_str}})
-            if results["ids"]:
-                collection.delete(ids=results["ids"])
-                count = len(results["ids"])
-            return count
+        def _cleanup_table(table):
+            # Count rows before deletion
+            try:
+                before_count = len(table)
+            except Exception:
+                before_count = 0
+
+            # Delete old entries using SQL-like filter
+            try:
+                table.delete(f"timestamp < '{cutoff_str}'")
+            except Exception as e:
+                logger.debug(f"Cleanup skipped: {e}")
+                return 0
+
+            # Count rows after deletion
+            try:
+                after_count = len(table)
+            except Exception:
+                after_count = 0
+
+            return max(0, before_count - after_count)
 
         # Run cleanup in executor
-        deleted_count += await asyncio.to_thread(_cleanup_collection, self.conversations_collection)
-        deleted_count += await asyncio.to_thread(_cleanup_collection, self.outputs_collection)
+        deleted_count += await asyncio.to_thread(_cleanup_table, self.conversations_table)
+        deleted_count += await asyncio.to_thread(_cleanup_table, self.outputs_table)
 
         logger.info(f"Cleaned up {deleted_count} old memory entries (older than {days} days)")
         return deleted_count
@@ -305,9 +361,18 @@ class MemoryService:
         """
 
         def _get_counts():
-            conv_count = self.conversations_collection.count()
-            output_count = self.outputs_collection.count()
-            doc_count = self.documents_collection.count()
+            try:
+                conv_count = len(self.conversations_table)
+            except Exception:
+                conv_count = 0
+            try:
+                output_count = len(self.outputs_table)
+            except Exception:
+                output_count = 0
+            try:
+                doc_count = len(self.documents_table)
+            except Exception:
+                doc_count = 0
             return conv_count, output_count, doc_count
 
         # Run in executor

@@ -7,7 +7,12 @@ import sys
 import uuid
 from datetime import datetime
 
-from app.db.chroma_client import chroma_client
+from app.db.lance_client import (
+    AgentOutputSchema,
+    ConversationSchema,
+    DocumentSchema,
+    lance_client,
+)
 from app.db.database import AsyncSessionLocal, Base, engine
 from app.models import Agent, AgentStatus, AgentType, APIKey
 from app.utils.datetime_utils import utcnow
@@ -37,23 +42,55 @@ async def seed_default_data():
             print("Database already contains data. Skipping seeding.")
             return
 
-        # Create sample agents matching the screenshot
+        # Create sample agents
         sample_agents = [
             {
                 "id": str(uuid.uuid4()),
-                "name": "Customer Support Bot",
-                "description": "Handles customer inquiries and provides instant support across multiple channels",
-                "agent_type": AgentType.CONVERSATIONAL,
+                "name": "Slack Agent",
+                "description": "Retrieves last day's messages from Slack channels and direct messages",
+                "agent_type": AgentType.AUTOMATION,
                 "status": AgentStatus.ACTIVE,
                 "model": "claude-3-5-sonnet-20241022",
-                "temperature": 0.7,
+                "temperature": 0.5,
                 "max_tokens": 4096,
-                "system_prompt": "You are a helpful customer support assistant. Provide clear, concise, and friendly responses to customer inquiries.",
-                "tags": ["support", "customer-service", "conversational"],
-                "tasks_completed": 1247,
-                "tasks_failed": 60,
+                "system_prompt": "You are a Slack integration agent. Retrieve and summarize messages from the last 24 hours, highlighting important conversations, mentions, and action items.",
+                "tags": ["slack", "messaging", "automation", "communication"],
+                "tasks_completed": 567,
+                "tasks_failed": 12,
                 "last_active": utcnow(),
-                "tools_config": {"slack": True, "email": True},
+                "tools_config": {"slack": True},
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Outlook Agent",
+                "description": "Retrieves last week's emails from Outlook inbox and organizes by priority",
+                "agent_type": AgentType.AUTOMATION,
+                "status": AgentStatus.ACTIVE,
+                "model": "claude-3-5-sonnet-20241022",
+                "temperature": 0.4,
+                "max_tokens": 8192,
+                "system_prompt": "You are an Outlook email agent. Retrieve emails from the past week, categorize them by importance, identify action items, and provide a comprehensive summary.",
+                "tags": ["outlook", "email", "automation", "productivity"],
+                "tasks_completed": 892,
+                "tasks_failed": 23,
+                "last_active": utcnow(),
+                "tools_config": {"outlook": True},
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Teams Agent",
+                "description": "Retrieves last week's meeting notes from Microsoft Teams and extracts key decisions",
+                "agent_type": AgentType.ANALYTICAL,
+                "status": AgentStatus.ACTIVE,
+                "model": "claude-3-5-sonnet-20241022",
+                "temperature": 0.3,
+                "max_tokens": 8192,
+                "system_prompt": "You are a Microsoft Teams meeting assistant. Retrieve meeting notes and recordings from the past week, extract key decisions, action items, and follow-ups. Organize findings by project or team.",
+                "tags": ["teams", "meetings", "analytical", "collaboration"],
+                "tasks_completed": 445,
+                "tasks_failed": 8,
+                "last_active": utcnow(),
+                "tools_config": {"teams": True, "onedrive": True},
             },
             {
                 "id": str(uuid.uuid4()),
@@ -89,42 +126,10 @@ async def seed_default_data():
             },
             {
                 "id": str(uuid.uuid4()),
-                "name": "Code Review Assistant",
-                "description": "Reviews code for best practices, bugs, and security vulnerabilities",
-                "agent_type": AgentType.ANALYTICAL,
-                "status": AgentStatus.TRAINING,
-                "model": "claude-3-5-sonnet-20241022",
-                "temperature": 0.2,
-                "max_tokens": 8192,
-                "system_prompt": "You are a code review expert. Review code for best practices, potential bugs, security vulnerabilities, and suggest improvements.",
-                "tags": ["analytical", "code", "review"],
-                "tasks_completed": 234,
-                "tasks_failed": 12,
-                "last_active": utcnow(),
-                "tools_config": {},
-            },
-            {
-                "id": str(uuid.uuid4()),
-                "name": "Email Automation",
-                "description": "Automates email responses and manages inbox workflows",
-                "agent_type": AgentType.AUTOMATION,
-                "status": AgentStatus.INACTIVE,
-                "model": "claude-3-opus-20240229",
-                "temperature": 0.5,
-                "max_tokens": 4096,
-                "system_prompt": "You are an email automation assistant. Process emails, draft responses, and manage inbox workflows efficiently.",
-                "tags": ["automation", "email"],
-                "tasks_completed": 1892,
-                "tasks_failed": 156,
-                "last_active": None,
-                "tools_config": {"outlook": True},
-            },
-            {
-                "id": str(uuid.uuid4()),
                 "name": "Research Assistant",
                 "description": "Conducts research and summarizes findings from multiple sources",
                 "agent_type": AgentType.ANALYTICAL,
-                "status": AgentStatus.ERROR,
+                "status": AgentStatus.PAUSED,
                 "model": "claude-3-5-sonnet-20241022",
                 "temperature": 0.4,
                 "max_tokens": 8192,
@@ -145,24 +150,16 @@ async def seed_default_data():
         print(f"Seeded {len(sample_agents)} sample agents.")
 
 
-async def init_chroma_collections():
-    """Initialize ChromaDB collections."""
-    print("Initializing ChromaDB collections...")
+async def init_lance_tables():
+    """Initialize LanceDB tables."""
+    print("Initializing LanceDB tables...")
 
-    # Create collections
-    chroma_client.get_or_create_collection(
-        name="conversations", metadata={"description": "Agent conversation history"}
-    )
+    # Create tables with schemas
+    lance_client.get_or_create_table(name="conversations", schema=ConversationSchema)
+    lance_client.get_or_create_table(name="agent_outputs", schema=AgentOutputSchema)
+    lance_client.get_or_create_table(name="documents", schema=DocumentSchema)
 
-    chroma_client.get_or_create_collection(
-        name="agent_outputs", metadata={"description": "Agent task outputs and results"}
-    )
-
-    chroma_client.get_or_create_collection(
-        name="documents", metadata={"description": "Embedded documents for RAG"}
-    )
-
-    print("ChromaDB collections initialized.")
+    print("LanceDB tables initialized.")
 
 
 async def main():
@@ -177,8 +174,8 @@ async def main():
     # Seed default data
     await seed_default_data()
 
-    # Initialize ChromaDB
-    await init_chroma_collections()
+    # Initialize LanceDB
+    await init_lance_tables()
 
     print("=" * 50)
     print("Initialization complete!")

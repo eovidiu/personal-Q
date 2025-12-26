@@ -1,5 +1,5 @@
-# Multi-stage build for production
-FROM python:3.11-slim as base
+# Production Dockerfile
+FROM python:3.11-slim
 
 # Set working directory
 WORKDIR /app
@@ -31,7 +31,7 @@ COPY migrations ./migrations
 RUN pip install --no-cache-dir -e . --timeout 300
 
 # Create data directories
-RUN mkdir -p /app/data /app/data/chromadb
+RUN mkdir -p /app/data /app/data/lancedb
 
 # Create non-root user for security
 RUN useradd -m -u 1000 appuser && \

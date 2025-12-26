@@ -3,9 +3,7 @@ Unit tests for Memory service.
 """
 
 import pytest
-from unittest.mock import Mock, AsyncMock, patch
-import sys
-import os
+from unittest.mock import Mock, patch
 
 
 from app.services.memory_service import MemoryService
@@ -15,44 +13,56 @@ class TestMemoryService:
     """Tests for Memory Service."""
 
     @pytest.fixture
-    def mock_collections(self):
-        """Create mock collections with count methods."""
-        conv_collection = Mock()
-        conv_collection.count = Mock(return_value=0)
-        conv_collection.add = Mock()
-        conv_collection.query = Mock(return_value={"documents": [], "metadatas": []})
+    def mock_tables(self):
+        """Create mock tables with LanceDB-like methods."""
+        conv_table = Mock()
+        conv_table.__len__ = Mock(return_value=0)
+        conv_table.add = Mock()
+        conv_table.search = Mock(return_value=Mock(
+            limit=Mock(return_value=Mock(
+                where=Mock(return_value=Mock(to_list=Mock(return_value=[]))),
+                to_list=Mock(return_value=[])
+            ))
+        ))
 
-        outputs_collection = Mock()
-        outputs_collection.count = Mock(return_value=0)
-        outputs_collection.add = Mock()
-        outputs_collection.query = Mock(return_value={"documents": [], "metadatas": []})
+        outputs_table = Mock()
+        outputs_table.__len__ = Mock(return_value=0)
+        outputs_table.add = Mock()
+        outputs_table.search = Mock(return_value=Mock(
+            limit=Mock(return_value=Mock(
+                where=Mock(return_value=Mock(to_list=Mock(return_value=[]))),
+                to_list=Mock(return_value=[])
+            ))
+        ))
 
-        docs_collection = Mock()
-        docs_collection.count = Mock(return_value=0)
-        docs_collection.add = Mock()
-        docs_collection.query = Mock(return_value={"documents": [], "metadatas": []})
+        docs_table = Mock()
+        docs_table.__len__ = Mock(return_value=0)
+        docs_table.add = Mock()
+        docs_table.search = Mock(return_value=Mock(
+            limit=Mock(return_value=Mock(to_list=Mock(return_value=[])))
+        ))
 
         return {
-            "conversations": conv_collection,
-            "agent_outputs": outputs_collection,
-            "documents": docs_collection
+            "conversations": conv_table,
+            "agent_outputs": outputs_table,
+            "documents": docs_table
         }
 
     @pytest.fixture
-    def mock_chroma_client(self, mock_collections):
-        """Create mock ChromaDB client."""
+    def mock_lance_client(self, mock_tables):
+        """Create mock LanceDB client."""
         client = Mock()
 
-        def get_or_create_collection(name, **kwargs):
-            return mock_collections.get(name, Mock())
+        def get_or_create_table(name, schema=None, **kwargs):
+            return mock_tables.get(name, Mock())
 
-        client.get_or_create_collection = Mock(side_effect=get_or_create_collection)
+        client.get_or_create_table = Mock(side_effect=get_or_create_table)
         return client
 
     @pytest.fixture
-    def memory_service(self, mock_chroma_client):
+    def memory_service(self, mock_lance_client):
         """Create memory service with mocked client."""
-        with patch("app.services.memory_service.get_chroma_client", return_value=mock_chroma_client):
+        with patch("app.services.memory_service.get_lance_client", return_value=mock_lance_client):
             service = MemoryService()
             return service
 
@@ -91,14 +101,14 @@ class TestMemoryService:
     @pytest.mark.asyncio
     async def test_get_statistics(self, memory_service):
         """Test getting memory statistics."""
-        # Mock collection counts
-        memory_service.conversations_collection.count = Mock(return_value=100)
-        memory_service.outputs_collection.count = Mock(return_value=50)
-        memory_service.documents_collection.count = Mock(return_value=25)
+        # Mock table lengths using len()
+        memory_service.conversations_table.__len__ = Mock(return_value=100)
+        memory_service.outputs_table.__len__ = Mock(return_value=50)
+        memory_service.documents_table.__len__ = Mock(return_value=25)
 
         stats = await memory_service.get_statistics()
 
         assert stats["conversations"] == 100
         assert stats["agent_outputs"] == 50
         assert stats["documents"] == 25
-        assert "total" in stats or stats["conversations"] + stats["agent_outputs"] + stats["documents"] == 175
+        assert stats["total"] == 175

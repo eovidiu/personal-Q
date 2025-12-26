@@ -28,7 +28,7 @@ services:
     environment:
       - ENV=${ENV:-development}  # SECURITY: Explicitly set environment, default to development
       - DATABASE_URL=sqlite:///./data/personal_q.db
-      - CHROMA_DB_PATH=./data/chromadb
+      - LANCE_DB_PATH=./data/lancedb
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
@@ -59,7 +59,7 @@ services:
     environment:
       - ENV=${ENV:-development}  # SECURITY: Explicitly set environment
       - DATABASE_URL=sqlite:///./data/personal_q.db
-      - CHROMA_DB_PATH=./data/chromadb
+      - LANCE_DB_PATH=./data/lancedb
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0

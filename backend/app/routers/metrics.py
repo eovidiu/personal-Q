@@ -115,4 +115,4 @@ async def get_memory_statistics(current_user: Dict = Depends(get_current_user)):
     memory_service = get_memory_service()
     stats = await memory_service.get_statistics()
 
-    return {"memory_statistics": stats, "storage_type": "ChromaDB (embedded)"}
+    return {"memory_statistics": stats, "storage_type": "LanceDB (embedded)"}

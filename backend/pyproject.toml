@@ -17,12 +17,13 @@ authors = [
 dependencies = [
     "fastapi>=0.115.0,<0.116.0",
     "uvicorn[standard]>=0.32.0",
-    "pydantic>=2.9.2",
+    "pydantic[email]>=2.9.2",
     "pydantic-settings>=2.6.0",
     "sqlalchemy==2.0.36",
     "alembic==1.13.3",
     "aiosqlite==0.20.0",
-    "chromadb>=0.5.18",
+    "lancedb>=0.17.0",
+    "sentence-transformers>=2.2.0",  # For LanceDB embeddings
     "anthropic>=0.39.0",
     "celery==5.4.0",
     "redis==5.2.0",
@@ -81,3 +82,10 @@ python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.4",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+]

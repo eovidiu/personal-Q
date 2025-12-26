@@ -3,12 +3,10 @@ Unit tests for database connections and utilities.
 """
 
 import pytest
-import sys
-import os
+from unittest.mock import patch, Mock
 
 
 from app.db.database import get_db, init_db, close_db
-from app.db.chroma_client import ChromaDBClient, get_chroma_client
 
 
 class TestDatabaseConnection:
@@ -50,49 +48,82 @@ class TestDatabaseConnection:
             assert "schedules" in tables
 
 
-class TestChromaDBClient:
-    """Tests for ChromaDB client."""
+class TestLanceDBClient:
+    """Tests for LanceDB client."""
 
-    def test_chromadb_singleton(self):
-        """Test ChromaDB client is singleton."""
-        client1 = ChromaDBClient()
-        client2 = ChromaDBClient()
+    def test_lancedb_singleton(self):
+        """Test LanceDB client is singleton."""
+        # Mock lancedb.connect to avoid actual file system operations
+        with patch("app.db.lance_client.lancedb") as mock_lancedb:
+            mock_lancedb.connect.return_value = Mock()
 
-        assert client1 is client2
+            # Import after patching to get mocked version
+            from app.db.lance_client import LanceDBClient
 
-    def test_get_chroma_client(self):
-        """Test get_chroma_client dependency."""
-        client = get_chroma_client()
+            # Reset singleton for test
+            LanceDBClient._instance = None
+            LanceDBClient._db = None
 
-        assert client is not None
-        assert isinstance(client, ChromaDBClient)
+            client1 = LanceDBClient()
+            client2 = LanceDBClient()
 
-    def test_create_collection(self):
-        """Test creating a ChromaDB collection."""
-        client = get_chroma_client()
+            assert client1 is client2
 
-        collection = client.get_or_create_collection(
-            name="test_collection",
-            metadata={"test": "metadata"}
-        )
+    def test_get_lance_client(self):
+        """Test get_lance_client dependency."""
+        with patch("app.db.lance_client.lancedb") as mock_lancedb:
+            mock_lancedb.connect.return_value = Mock()
 
-        assert collection is not None
-        assert collection.name == "test_collection"
+            from app.db.lance_client import LanceDBClient, get_lance_client
 
-        # Cleanup
-        client.delete_collection("test_collection")
+            # Reset singleton for test
+            LanceDBClient._instance = None
+            LanceDBClient._db = None
 
-    def test_list_collections(self):
-        """Test listing ChromaDB collections."""
-        client = get_chroma_client()
+            client = get_lance_client()
 
-        # Create test collection
-        client.get_or_create_collection(name="test_list")
+            assert client is not None
+            assert isinstance(client, LanceDBClient)
 
-        collections = client.list_collections()
-        collection_names = [c.name for c in collections]
+    def test_create_table(self):
+        """Test creating a LanceDB table."""
+        with patch("app.db.lance_client.lancedb") as mock_lancedb:
+            mock_db = Mock()
+            mock_table = Mock()
+            mock_db.create_table.return_value = mock_table
+            mock_db.open_table.side_effect = Exception("Table not found")
+            mock_lancedb.connect.return_value = mock_db
 
-        assert "test_list" in collection_names
+            from app.db.lance_client import LanceDBClient, ConversationSchema
 
-        # Cleanup
-        client.delete_collection("test_list")
+            # Reset singleton for test
+            LanceDBClient._instance = None
+            LanceDBClient._db = None
+
+            client = LanceDBClient()
+            table = client.get_or_create_table(
+                name="test_table",
+                schema=ConversationSchema
+            )
+
+            assert table is not None
+            mock_db.create_table.assert_called_once()
+
+    def test_list_tables(self):
+        """Test listing LanceDB tables."""
+        with patch("app.db.lance_client.lancedb") as mock_lancedb:
+            mock_db = Mock()
+            mock_db.table_names.return_value = ["conversations", "documents"]
+            mock_lancedb.connect.return_value = mock_db
+
+            from app.db.lance_client import LanceDBClient
+
+            # Reset singleton for test
+            LanceDBClient._instance = None
+            LanceDBClient._db = None
+
+            client = LanceDBClient()
+            tables = client.list_tables()
+
+            assert "conversations" in tables
+            assert "documents" in tables

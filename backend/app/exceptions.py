@@ -15,7 +15,7 @@ __all__ = [
     "SlackIntegrationError",
     "MicrosoftGraphError",
     "ObsidianIntegrationError",
-    "ChromaDBError",
+    "LanceDBError",
     "CacheError",
     "ConfigurationError",
     "ValidationError",
@@ -92,8 +92,8 @@ class ObsidianIntegrationError(IntegrationError):
     pass
 
 
-class ChromaDBError(PersonalQException):
-    """Raised when ChromaDB operation fails."""
+class LanceDBError(PersonalQException):
+    """Raised when LanceDB operation fails."""
 
     pass
 

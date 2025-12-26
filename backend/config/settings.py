@@ -34,7 +34,7 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = "sqlite:///./data/personal_q.db"
-    chroma_db_path: str = "./data/chromadb"
+    lance_db_path: str = "./data/lancedb"
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"

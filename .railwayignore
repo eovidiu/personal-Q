@@ -1,0 +1,27 @@
+# Virtual environments
+.venv/
+venv/
+env/
+backend/.venv/
+__pycache__/
+*.pyc
+
+# Node modules
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+
+# Tests
+tests/
+htmlcov/
+.coverage
+.pytest_cache/
+
+# Local data
+data/
+*.db
+
+# Git
+.git/

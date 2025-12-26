@@ -9,11 +9,11 @@ __all__ = [
     "get_db",
     "init_db",
     "close_db",
-    "ChromaDBClient",
-    "get_chroma_client",
+    "LanceDBClient",
+    "get_lance_client",
     "EncryptedString",
 ]
 
-from .chroma_client import ChromaDBClient, get_chroma_client
+from .lance_client import LanceDBClient, get_lance_client
 from .database import AsyncSessionLocal, Base, close_db, engine, get_db, init_db
 from .encrypted_types import EncryptedString

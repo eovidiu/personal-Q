@@ -145,9 +145,9 @@ async def client(test_app):
 
 
 @pytest.fixture
-def db_session(test_session):
+async def db_session(test_session):
     """Alias for test_session to match test expectations."""
-    return test_session
+    yield test_session
 
 
 @pytest.fixture
