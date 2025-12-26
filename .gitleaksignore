@@ -1,0 +1,15 @@
+# Local environment file (not tracked in git)
+.env:generic-api-key:3
+.env:generic-api-key:6
+.env:generic-api-key:12
+
+# Documentation examples with placeholder values
+LOCAL_STARTUP_GUIDE.md:curl-auth-header:521
+docs/ci-cd-setup.md:generic-api-key:139
+docs/ci-cd-setup.md:generic-api-key:216
+
+# Test artifacts (not committed, in .gitignore)
+test-results/.playwright-artifacts-204/traces/ae96a0ce7ee0e7ab2662-2d4ff4c41d370743e69b-retry1.network:generic-api-key:14
+test-results/.playwright-artifacts-204/traces/ae96a0ce7ee0e7ab2662-2d4ff4c41d370743e69b-retry1-pwnetcopy-1.network:generic-api-key:14
+test-results/.playwright-artifacts-202/traces/ae96a0ce7ee0e7ab2662-539767858242bf1c3622-retry1-pwnetcopy-1.network:generic-api-key:19
+test-results/.playwright-artifacts-202/traces/ae96a0ce7ee0e7ab2662-539767858242bf1c3622-retry1.network:generic-api-key:19
