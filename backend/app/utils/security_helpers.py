@@ -124,17 +124,25 @@ def sanitize_prompt(prompt: str, system_prompt: Optional[str] = None) -> tuple[s
     return bounded_prompt, sanitized_system
 
 
-def verify_task_ownership(task: Any, current_user: Dict, allow_admin: bool = False) -> bool:
+def verify_user_task_access(task: Any, current_user: Dict, allow_admin: bool = False) -> bool:
     """
-    Verify that a user owns a task or has permission to access it.
+    Issue #112: Renamed from verify_task_ownership to reflect actual behavior.
+
+    Verify that a user is authenticated and can access tasks.
+
+    IMPORTANT: In single-user mode, this only verifies authentication - NOT ownership.
+    All tasks are accessible to the single authenticated user.
+
+    TODO (multi-user): Implement proper ownership check via task.agent.user_id
+    when multi-user support is added.
 
     Args:
-        task: Task object with agent relationship
+        task: Task object (currently unused in single-user mode)
         current_user: Current user dict from JWT
         allow_admin: Whether to allow admin users full access
 
     Returns:
-        True if user has permission, False otherwise
+        True if user is authenticated, False otherwise
     """
     # In single-user mode, check against allowed email
     user_email = current_user.get("email")
@@ -143,17 +151,23 @@ def verify_task_ownership(task: Any, current_user: Dict, allow_admin: bool = Fal
         logger.warning("No email in current_user dict")
         return False
 
-    # For future multi-user support, would check task.agent.user_id
-    # Currently all tasks belong to the single allowed user
-    # This is a placeholder for proper authorization
-
     # Check if user is admin (future feature)
     if allow_admin and current_user.get("is_admin"):
         return True
 
-    # In production, would check: task.agent.user_id == current_user["id"]
-    # For now, just verify the user is authenticated (single-user mode)
+    # Single-user mode: authentication equals authorization
+    # TODO (multi-user): Change to: task.agent.user_id == current_user["id"]
     return user_email is not None
+
+
+# Backward compatibility alias (deprecated)
+def verify_task_ownership(task: Any, current_user: Dict, allow_admin: bool = False) -> bool:
+    """
+    DEPRECATED: Use verify_user_task_access instead.
+    This alias exists for backward compatibility.
+    """
+    logger.warning("verify_task_ownership is deprecated, use verify_user_task_access")
+    return verify_user_task_access(task, current_user, allow_admin)
 
 
 def classify_error_type(error: Exception) -> str:

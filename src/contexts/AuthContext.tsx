@@ -133,10 +133,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       setError(null);
+      // Issue #111: Get CSRF token from cookie for defense-in-depth protection
+      const csrfToken = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrf_token='))
+        ?.split('=')[1];
+
       // Call backend logout with credentials to clear HttpOnly cookie
       await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
         method: 'POST',
         credentials: 'include',  // HIGH-003: Include cookies for proper logout
+        headers: {
+          'X-CSRF-Token': csrfToken || '',  // Issue #111: Send CSRF token
+        },
       });
     } catch (error) {
       console.error('Logout error:', error);

@@ -6,6 +6,7 @@ This prevents JWT tokens from being logged in server logs, browser history,
 and proxy caches.
 """
 
+import asyncio
 import json
 import logging
 from typing import Dict, Optional, Set
@@ -132,8 +133,17 @@ async def websocket_endpoint(websocket: WebSocket):
     user = None
 
     try:
-        # Wait for authentication message (with timeout handled by client/server config)
-        auth_data = await websocket.receive_text()
+        # Issue #109 fix: Enforce timeout for authentication message
+        # Prevents resource exhaustion from clients that connect but never authenticate
+        try:
+            auth_data = await asyncio.wait_for(
+                websocket.receive_text(),
+                timeout=AUTH_TIMEOUT_SECONDS
+            )
+        except asyncio.TimeoutError:
+            logger.warning("WebSocket: Authentication timeout - closing connection")
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication timeout")
+            return
 
         # Validate message size
         if len(auth_data) > MAX_MESSAGE_SIZE:
@@ -157,8 +167,20 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication required")
             return
 
-        # Validate token
+        # Issue #110 fix: Support both token-based and cookie-based authentication
+        # Frontend may send either:
+        # 1. {action: 'authenticate', token: 'jwt_token'} - for test/dev mode
+        # 2. {action: 'authenticate', session: 'cookie-auth'} - for production cookie auth
         token = auth_message.get("token")
+
+        # If no token in message, check for cookie-auth mode
+        if not token and auth_message.get("session") == "cookie-auth":
+            # Get token from HttpOnly cookie (sent during WebSocket upgrade handshake)
+            cookie_token = websocket.cookies.get("access_token")
+            if cookie_token:
+                token = cookie_token
+                logger.debug("WebSocket: Using token from HttpOnly cookie")
+
         user = await verify_websocket_token(token)
 
         if not user:

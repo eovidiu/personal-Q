@@ -10,7 +10,7 @@ from app.models.agent import Agent, AgentStatus
 from app.models.task import Task, TaskStatus
 from app.services.memory_service import get_memory_service
 from app.services.trend_calculator import TrendCalculator
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -77,8 +77,12 @@ async def get_agent_metrics(
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent = result.scalar_one_or_none()
 
+    # Issue #114 fix: Use proper HTTP status code for not found
     if not agent:
-        return {"error": "Agent not found"}
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Agent not found"
+        )
 
     # Get task breakdown
     pending_result = await db.execute(

@@ -30,13 +30,24 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # Content Security Policy
         # Note: In production, customize based on your actual needs
+
+        # Issue #113 fix: Derive WebSocket origins from CORS origins
+        # This prevents data exfiltration to arbitrary WebSocket endpoints
+        ws_origins = []
+        for origin in settings.cors_origins_list:
+            if origin.startswith("https://"):
+                ws_origins.append(origin.replace("https://", "wss://"))
+            elif origin.startswith("http://"):
+                ws_origins.append(origin.replace("http://", "ws://"))
+        ws_sources = " ".join(ws_origins) if ws_origins else ""
+
         csp_parts = [
             "default-src 'self'",
             "script-src 'self'",
             "style-src 'self' 'unsafe-inline'",  # 'unsafe-inline' needed for some UI frameworks
             "img-src 'self' data: https:",
             "font-src 'self'",
-            "connect-src 'self' https://api.anthropic.com ws: wss:",  # Allow WebSocket and Anthropic API
+            f"connect-src 'self' https://api.anthropic.com {ws_sources}".strip(),  # Issue #113: Restricted WebSocket origins
             "frame-ancestors 'none'",  # Don't allow embedding
             "base-uri 'self'",
             "form-action 'self'",

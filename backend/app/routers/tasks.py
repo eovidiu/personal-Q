@@ -185,10 +185,11 @@ async def cancel_task(
                     detail=f"Cannot cancel task with status {existing_task.status.value}",
                 )
 
-        # SECURITY FIX (HIGH-005): Verify task ownership before allowing cancellation
-        from app.utils.security_helpers import verify_task_ownership
+        # SECURITY FIX (HIGH-005): Verify user has access before allowing cancellation
+        # Issue #112: Renamed function to reflect actual behavior (auth check in single-user mode)
+        from app.utils.security_helpers import verify_user_task_access
 
-        if not verify_task_ownership(task, current_user):
+        if not verify_user_task_access(task, current_user):
             raise HTTPException(status_code=403, detail="Not authorized to cancel this task")
 
         # Revoke Celery task if it exists

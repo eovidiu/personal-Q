@@ -238,6 +238,19 @@ async def auth_callback(request: Request):
             path="/",
         )
 
+        # Issue #111 fix: Set explicit CSRF token for defense-in-depth
+        # This provides additional protection beyond SameSite cookies
+        csrf_token = secrets.token_urlsafe(32)
+        response.set_cookie(
+            key="csrf_token",
+            value=csrf_token,
+            httponly=False,  # Must be readable by JavaScript
+            secure=settings.env == "production",
+            samesite="strict",  # Stricter than access_token for CSRF protection
+            max_age=24 * 60 * 60,
+            path="/",
+        )
+
         logger.info(f"OAuth complete for {email}, token set in HttpOnly cookie")
         return response
 
@@ -257,14 +270,25 @@ async def logout(request: Request):
     Logout - clears HttpOnly authentication cookie.
 
     HIGH-003 fix: Properly clears the HttpOnly cookie set during OAuth.
-    MEDIUM-002 fix: CSRF protection via SameSite=lax cookie + session validation.
+    Issue #111 fix: CSRF protection via explicit token + SameSite cookies.
 
-    The SameSite=lax attribute prevents cross-site POST requests from including
-    the cookie. Additionally, we verify the session exists to ensure only
-    authenticated users can trigger logout (defense-in-depth).
+    Defense-in-depth: We validate CSRF token from header matches cookie.
+    This protects even if SameSite restrictions are bypassed (e.g., same-site XSS).
     """
-    # MEDIUM-002: Verify session exists (cookie must be present for logout)
-    # This adds defense-in-depth alongside SameSite=lax CSRF protection
+    # Issue #111: Validate CSRF token for defense-in-depth
+    csrf_cookie = request.cookies.get("csrf_token")
+    csrf_header = request.headers.get("X-CSRF-Token")
+
+    # Only enforce CSRF if user has a session (csrf_cookie exists)
+    if csrf_cookie:
+        if not csrf_header or csrf_cookie != csrf_header:
+            logger.warning("Logout CSRF validation failed")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="CSRF validation failed"
+            )
+
+    # Verify session exists (cookie must be present for logout)
     cookie_token = request.cookies.get("access_token")
     if not cookie_token:
         # No session to logout - but don't leak info, return success
@@ -285,6 +309,14 @@ async def logout(request: Request):
         path="/",
         secure=settings.env == "production",
         samesite="lax",
+    )
+
+    # Issue #111: Also clear the CSRF token cookie
+    response.delete_cookie(
+        key="csrf_token",
+        path="/",
+        secure=settings.env == "production",
+        samesite="strict",
     )
 
     return response
