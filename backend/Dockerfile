@@ -25,6 +25,7 @@ COPY pyproject.toml setup.py ./
 COPY app ./app
 COPY config ./config
 COPY migrations ./migrations
+COPY entrypoint.sh ./entrypoint.sh
 
 # Install package in editable mode with dependencies
 # Increased timeout for CrewAI dependency resolution
@@ -32,6 +33,9 @@ RUN pip install --no-cache-dir -e . --timeout 300
 
 # Create data directories
 RUN mkdir -p /app/data /app/data/lancedb
+
+# Make entrypoint executable
+RUN chmod +x /app/entrypoint.sh
 
 # Create non-root user for security
 RUN useradd -m -u 1000 appuser && \
@@ -43,8 +47,9 @@ USER appuser
 # Set Python path (backup measure)
 ENV PYTHONPATH=/app
 
-# Expose port
-EXPOSE 8000
+# Expose port (Railway will use PORT env var)
+EXPOSE ${PORT:-8000}
 
-# Run application using installed module
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Use entrypoint script to determine which service to run
+# Set SERVICE_TYPE=api|worker|beat via environment variable
+ENTRYPOINT ["/app/entrypoint.sh"]
