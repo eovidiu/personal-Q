@@ -8,7 +8,8 @@ case "${SERVICE_TYPE:-api}" in
     ;;
   worker)
     echo "Starting Celery worker..."
-    exec celery -A app.workers.celery_app worker --loglevel=info
+    # Use solo pool to avoid fork-safety issues with LanceDB
+    exec celery -A app.workers.celery_app worker --loglevel=info --pool=solo
     ;;
   beat)
     echo "Starting Celery beat..."

@@ -9,6 +9,8 @@ from fastapi import Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+from config.settings import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -80,8 +82,8 @@ def get_identifier(request: Request) -> str:
 limiter = Limiter(
     key_func=get_identifier,
     default_limits=["1000/hour"],  # Global default: 1000 requests per hour
-    storage_uri="redis://localhost:6379",  # Will use Redis from docker-compose
-    headers_enabled=True,  # Return rate limit info in response headers
+    storage_uri=settings.redis_url,  # Redis URL from environment settings
+    headers_enabled=False,  # Disabled to avoid SlowAPI response parameter requirement
 )
 
 

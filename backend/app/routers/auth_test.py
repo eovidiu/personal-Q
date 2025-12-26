@@ -13,10 +13,9 @@ This file should ONLY be imported in test/development environments.
 
 import logging
 
-from app.middleware.rate_limit import limiter
 from app.routers.auth import create_access_token
 from config.settings import settings
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, EmailStr, field_validator
 
 logger = logging.getLogger(__name__)
@@ -103,8 +102,8 @@ def _validate_test_environment() -> None:
 
 
 @router.post("/test-login", response_model=TestLoginResponse)
-@limiter.limit("10/minute")  # Rate limit: 10 requests per minute per IP
-async def test_login(http_request: Request, request: TestLoginRequest) -> TestLoginResponse:
+# Note: Rate limiting removed from test endpoint - it's already triple-layer secured
+async def test_login(login_request: TestLoginRequest) -> TestLoginResponse:
     """
     TEST-ONLY: Generate JWT token for automated testing.
 
@@ -118,7 +117,7 @@ async def test_login(http_request: Request, request: TestLoginRequest) -> TestLo
     - All access attempts are logged for security audit
 
     Args:
-        request: Login request with email
+        login_request: Login request with email
 
     Returns:
         TestLoginResponse with JWT access token
@@ -133,20 +132,20 @@ async def test_login(http_request: Request, request: TestLoginRequest) -> TestLo
 
     # Log test authentication attempt for security audit
     logger.warning(
-        f"⚠️  TEST AUTH: Generating token for {request.email} "
+        f"⚠️  TEST AUTH: Generating token for {login_request.email} "
         f"(Environment: {settings.env}, Debug: {settings.debug})"
     )
 
     # Generate real JWT token using production logic
     # This ensures test tokens match production token format and validation
-    access_token = create_access_token(request.email)
+    access_token = create_access_token(login_request.email)
 
-    logger.info(f"✓ Test token generated for {request.email}")
+    logger.info(f"✓ Test token generated for {login_request.email}")
 
     return TestLoginResponse(
         access_token=access_token,
         token_type="bearer",
-        email=request.email,
+        email=login_request.email,
     )
 
 
