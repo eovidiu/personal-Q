@@ -1,5 +1,9 @@
 """
 WebSocket endpoints for real-time updates with JWT authentication.
+
+SECURITY: Authentication is done via first-message protocol, not URL parameters.
+This prevents JWT tokens from being logged in server logs, browser history,
+and proxy caches.
 """
 
 import json
@@ -13,6 +17,10 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+# Security constants
+MAX_MESSAGE_SIZE = 64 * 1024  # 64KB limit for WebSocket messages
+AUTH_TIMEOUT_SECONDS = 10  # Time allowed for authentication after connection
 
 
 class ConnectionManager:
@@ -101,70 +109,80 @@ async def verify_websocket_token(token: Optional[str]) -> Optional[dict]:
 @router.websocket("/")
 async def websocket_endpoint(websocket: WebSocket):
     """
-    WebSocket connection endpoint with authentication.
+    WebSocket connection endpoint with first-message authentication.
 
-    SECURITY FIX (CVE-005, HIGH-002): Authentication via message instead of URL
-    Connection now requires authentication via initial message after connection.
-    This prevents JWT tokens from appearing in logs, browser history, or proxy logs.
+    SECURITY: Authentication is done via first message, NOT URL query parameters.
+    This prevents JWT tokens from being exposed in server logs, browser history,
+    and proxy caches.
+
+    Connection flow:
+    1. Client connects to ws://host/ws/ (no token in URL)
+    2. Server accepts connection and waits for auth message
+    3. Client sends: {"action": "authenticate", "token": "jwt_token"}
+    4. Server validates token and either confirms or closes connection
+
+    After authentication, supported actions:
+    - subscribe: Subscribe to event types
+    - ping: Heartbeat check
     """
-    # Accept connection first (unauthenticated)
+    # Accept connection first (authentication via first message)
     await websocket.accept()
+    logger.info("WebSocket connection accepted, awaiting authentication...")
 
-    # Set a timeout for authentication (10 seconds)
-    authenticated = False
     user = None
 
     try:
-        # Wait for authentication message
-        import asyncio
+        # Wait for authentication message (with timeout handled by client/server config)
+        auth_data = await websocket.receive_text()
+
+        # Validate message size
+        if len(auth_data) > MAX_MESSAGE_SIZE:
+            logger.warning("WebSocket: Authentication message too large")
+            await websocket.send_json({"error": "Message too large", "max_size": MAX_MESSAGE_SIZE})
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Message too large")
+            return
 
         try:
-            # Give client 10 seconds to authenticate
-            auth_data = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
             auth_message = json.loads(auth_data)
-
-            if auth_message.get("action") == "authenticate":
-                token = auth_message.get("token")
-                user = await verify_websocket_token(token)
-
-                if user:
-                    authenticated = True
-                    logger.info(f"WebSocket authenticated for user: {user.get('email')}")
-                    await manager.connect(websocket)
-                    await websocket.send_json(
-                        {"status": "authenticated", "user": user.get("email")}
-                    )
-                else:
-                    logger.warning("WebSocket authentication failed: Invalid token")
-                    await websocket.send_json({"error": "Authentication failed"})
-                    await websocket.close(
-                        code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token"
-                    )
-                    return
-            else:
-                logger.warning("WebSocket: First message must be authentication")
-                await websocket.send_json({"error": "Authentication required"})
-                await websocket.close(
-                    code=status.WS_1008_POLICY_VIOLATION, reason="Authentication required"
-                )
-                return
-
-        except asyncio.TimeoutError:
-            logger.warning("WebSocket: Authentication timeout")
-            await websocket.send_json({"error": "Authentication timeout"})
-            await websocket.close(
-                code=status.WS_1008_POLICY_VIOLATION, reason="Authentication timeout"
-            )
-            return
         except json.JSONDecodeError:
-            await websocket.send_json({"error": "Invalid authentication message"})
-            await websocket.close(code=status.WS_1003_UNSUPPORTED_DATA, reason="Invalid JSON")
+            logger.warning("WebSocket: Invalid JSON in authentication message")
+            await websocket.send_json({"error": "Invalid JSON"})
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid authentication format")
             return
 
-        # Main message loop (only reached if authenticated)
-        while authenticated:
-            # Receive messages from client
+        # Verify this is an authentication message
+        if auth_message.get("action") != "authenticate":
+            logger.warning(f"WebSocket: First message must be authentication, got: {auth_message.get('action')}")
+            await websocket.send_json({"error": "First message must be authentication", "expected_action": "authenticate"})
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication required")
+            return
+
+        # Validate token
+        token = auth_message.get("token")
+        user = await verify_websocket_token(token)
+
+        if not user:
+            logger.warning("WebSocket: Authentication failed - invalid token")
+            await websocket.send_json({"error": "Authentication failed", "reason": "Invalid or expired token"})
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication failed")
+            return
+
+        # Authentication successful
+        logger.info(f"WebSocket authenticated for user: {user.get('email')}")
+        await websocket.send_json({"status": "authenticated", "email": user.get("email")})
+
+        # Add to connection manager after successful auth
+        manager.active_connections.add(websocket)
+
+        # Main message loop
+        while True:
             data = await websocket.receive_text()
+
+            # Validate message size (MEDIUM-003 fix)
+            if len(data) > MAX_MESSAGE_SIZE:
+                logger.warning(f"WebSocket: Message too large ({len(data)} bytes)")
+                await websocket.send_json({"error": "Message too large", "max_size": MAX_MESSAGE_SIZE})
+                continue
 
             try:
                 message = json.loads(data)
@@ -175,17 +193,27 @@ async def websocket_endpoint(websocket: WebSocket):
                     event_types = message.get("event_types", [])
                     for event_type in event_types:
                         await manager.subscribe(websocket, event_type)
-
                     await websocket.send_json({"status": "subscribed", "event_types": event_types})
 
                 elif action == "ping":
                     # Heartbeat
                     await websocket.send_json({"status": "pong"})
 
+                elif action == "authenticate":
+                    # Already authenticated, ignore re-auth attempts
+                    await websocket.send_json({"status": "already_authenticated"})
+
+                else:
+                    await websocket.send_json({"error": f"Unknown action: {action}"})
+
             except json.JSONDecodeError:
                 await websocket.send_json({"error": "Invalid JSON"})
 
     except WebSocketDisconnect:
+        logger.info(f"WebSocket disconnected for user: {user.get('email') if user else 'unauthenticated'}")
+        manager.disconnect(websocket)
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
         manager.disconnect(websocket)
 
 

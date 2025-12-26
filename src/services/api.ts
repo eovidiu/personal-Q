@@ -20,6 +20,8 @@ class APIClient {
       headers: {
         'Content-Type': 'application/json',
       },
+      // HIGH-003 fix: Include cookies in requests for HttpOnly token auth
+      withCredentials: true,
     });
 
     // Request interceptor - add auth token
@@ -99,7 +101,7 @@ class APIClient {
     agent_id?: string;
     status?: string;
   }) {
-    const response = await this.client.get('/tasks', { params });
+    const response = await this.client.get('/tasks/', { params });
     return response.data;
   }
 
@@ -109,7 +111,7 @@ class APIClient {
   }
 
   async createTask(data: TaskCreate): Promise<Task> {
-    const response = await this.client.post('/tasks', data);
+    const response = await this.client.post('/tasks/', data);
     return response.data;
   }
 
@@ -176,8 +178,13 @@ export class WebSocketClient {
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
   private eventHandlers: Map<string, Set<(data: any) => void>> = new Map();
+  private baseUrl: string;
 
-  constructor(private baseUrl: string = `ws://localhost:8000/ws`) {}
+  constructor() {
+    // Convert HTTP(S) URL to WS(S) URL
+    const httpUrl = API_BASE_URL;
+    this.baseUrl = httpUrl.replace(/^http/, 'ws') + '/ws';
+  }
 
   connect(): void {
     if (this.ws?.readyState === WebSocket.OPEN) {

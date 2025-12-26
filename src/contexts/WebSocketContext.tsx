@@ -25,13 +25,6 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
-    // TODO: WebSocket authentication is failing - temporarily disabled
-    // See: https://github.com/eovidiu/personal-Q/issues/XXX
-    // The WebSocket endpoint requires JWT validation that's currently rejecting valid tokens
-    // Application works perfectly without WebSocket (just no real-time updates)
-
-    // Uncomment when WebSocket auth is fixed:
-    /*
     // Only connect WebSocket if user is authenticated
     if (!isAuthenticated) {
       return;
@@ -39,24 +32,22 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
     const client = clientRef.current;
 
-    // Connect to WebSocket with JWT token
+    // Connect to WebSocket with first-message authentication
+    // (token is sent as first message, not in URL - see CRITICAL-001 fix)
     client.connect();
     setIsConnected(true);
-    */
 
-    // Temporarily disable WebSocket to prevent console errors
-    console.info('WebSocket disabled temporarily - real-time updates unavailable');
-    return;
-
-    // Subscribe to events
-    client.subscribe([
-      'agent_created',
-      'agent_updated',
-      'agent_deleted',
-      'agent_status_changed',
-      'task_completed',
-      'activity_created',
-    ]);
+    // Subscribe to events after a brief delay to allow authentication to complete
+    const subscribeTimeout = setTimeout(() => {
+      client.subscribe([
+        'agent_created',
+        'agent_updated',
+        'agent_deleted',
+        'agent_status_changed',
+        'task_completed',
+        'activity_created',
+      ]);
+    }, 500);
 
     // Event handlers
     client.on('agent_created', () => {
@@ -89,12 +80,11 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     });
 
     // Cleanup on unmount
-    /*
     return () => {
+      clearTimeout(subscribeTimeout);
       client.disconnect();
       setIsConnected(false);
     };
-    */
   }, [queryClient, isAuthenticated]);
 
   return (

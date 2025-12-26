@@ -7,19 +7,23 @@ import { useAuth } from '@/contexts/AuthContext';
 /**
  * AuthCallbackPage handles OAuth redirect from Google
  *
+ * HIGH-003 fix: Now supports two authentication methods:
+ * 1. HttpOnly cookie (OAuth flow) - verifySession checks auth via /me endpoint
+ * 2. URL token (test auth) - setToken stores token for API calls
+ *
  * Flow:
- * 1. Extract token from URL query parameter
- * 2. Validate and store token via AuthContext
+ * 1. Check for token in URL (test auth flow)
+ * 2. If no token, verify session via HttpOnly cookie (OAuth flow)
  * 3. Redirect to dashboard on success
  * 4. Show error and redirect to login on failure
  *
  * SECURITY NOTES:
  * - Uses ref to prevent race conditions from multiple effect runs
  * - Cleans up timeouts to prevent memory leaks
- * - Token from URL should be replaced with httpOnly cookies in production
+ * - OAuth tokens are now in HttpOnly cookies (not exposed to JavaScript)
  */
 export function AuthCallbackPage() {
-  const { setToken } = useAuth();
+  const { setToken, verifySession } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
@@ -39,23 +43,29 @@ export function AuthCallbackPage() {
         // Mark as processing to prevent race conditions
         hasProcessedRef.current = true;
 
-        // Extract token from URL
+        // Check for token in URL (test auth flow)
         const token = searchParams.get('token');
 
-        if (!token) {
-          setError('Authentication failed: No token received');
+        if (token) {
+          // Test auth flow: token passed in URL
+          await setToken(token);
+          navigate('/', { replace: true });
+          return;
+        }
+
+        // HIGH-003 fix: OAuth flow - verify session via HttpOnly cookie
+        const isAuthenticated = await verifySession();
+
+        if (isAuthenticated) {
+          // OAuth successful, redirect to dashboard
+          navigate('/', { replace: true });
+        } else {
+          setError('Authentication failed. Please try again.');
           // Redirect to login after showing error briefly
           redirectTimeoutRef.current = setTimeout(() => {
             navigate('/login', { replace: true });
           }, 2000);
-          return;
         }
-
-        // Set token and fetch user info
-        await setToken(token);
-
-        // Navigate to dashboard
-        navigate('/', { replace: true });
 
       } catch (err) {
         console.error('Authentication callback error:', err);
@@ -79,7 +89,7 @@ export function AuthCallbackPage() {
         clearTimeout(redirectTimeoutRef.current);
       }
     };
-  }, [searchParams, navigate, setToken]);
+  }, [searchParams, navigate, setToken, verifySession]);
 
   // Show error state
   if (error) {

@@ -1,17 +1,20 @@
 """
 ABOUTME: Test-only authentication endpoint for E2E testing with Playwright.
 ABOUTME: Provides JWT tokens without Google OAuth for automated test environments.
-ABOUTME: SECURITY: Triple-layer validation ensures this is NEVER available in production.
+ABOUTME: SECURITY: Quad-layer validation ensures this is NEVER available in production.
 
-SECURITY ARCHITECTURE:
-- Layer 1 (Import-time): Raises error if imported when ENV=production
+SECURITY ARCHITECTURE (HIGH-002 fix):
+- Layer 1 (Import-time): Multi-factor production detection blocks import
 - Layer 2 (Registration): Router only included in main.py for non-production
 - Layer 3 (Runtime): Endpoints return 404 if somehow accessed in production
+- Layer 4 (Startup): main.py validates test routes not registered in production
 
 This file should ONLY be imported in test/development environments.
 """
 
 import logging
+import os
+import socket
 
 from app.routers.auth import create_access_token
 from config.settings import settings
@@ -20,9 +23,53 @@ from pydantic import BaseModel, EmailStr, field_validator
 
 logger = logging.getLogger(__name__)
 
-# SECURITY LAYER 1: Import-time validation
+
+def _is_production_environment() -> bool:
+    """
+    Multi-factor production detection (HIGH-002 fix).
+
+    Returns True if ANY production indicator is present.
+    This provides defense-in-depth against misconfigured ENV variable.
+    """
+    # Check 1: Explicit ENV variable (primary)
+    if settings.env == "production":
+        return True
+
+    # Check 2: Railway production environment
+    if os.getenv("RAILWAY_ENVIRONMENT") == "production":
+        logger.warning("Production detected via RAILWAY_ENVIRONMENT")
+        return True
+
+    # Check 3: Render production (not a PR preview)
+    if os.getenv("RENDER") and not os.getenv("IS_PULL_REQUEST"):
+        # RENDER_EXTERNAL_URL indicates production Render deployment
+        if os.getenv("RENDER_EXTERNAL_URL"):
+            logger.warning("Production detected via RENDER environment")
+            return True
+
+    # Check 4: Hostname-based detection
+    try:
+        hostname = socket.gethostname().lower()
+        prod_indicators = ["prod", "production", "live"]
+        if any(ind in hostname for ind in prod_indicators):
+            logger.warning(f"Production detected via hostname: {hostname}")
+            return True
+    except Exception:
+        pass  # Hostname check failed, continue with other checks
+
+    # Check 5: Fly.io production
+    if os.getenv("FLY_APP_NAME") and os.getenv("FLY_REGION"):
+        # If FLY_ALLOC_ID exists, it's a running Fly machine
+        if os.getenv("FLY_ALLOC_ID"):
+            logger.warning("Production detected via Fly.io environment")
+            return True
+
+    return False
+
+
+# SECURITY LAYER 1: Import-time validation with multi-factor detection
 # Prevent this module from being imported in production environments
-if settings.env == "production":
+if _is_production_environment():
     # Clear this module from cache to prevent reuse if ENV changes
     import sys
 
@@ -78,15 +125,17 @@ router = APIRouter()
 
 def _validate_test_environment() -> None:
     """
-    SECURITY LAYER 3: Runtime validation.
+    SECURITY LAYER 3: Runtime validation with multi-factor detection (HIGH-002 fix).
 
     Validates that current environment allows test auth.
+    Uses same multi-factor detection as import-time check for defense-in-depth.
     Raises HTTPException if accessed in production.
     """
-    if settings.env == "production":
+    if _is_production_environment():
         logger.error(
             "🚨 SECURITY ALERT: Test auth endpoint accessed in production environment! "
-            "This endpoint should be completely disabled in production."
+            "This endpoint should be completely disabled in production. "
+            f"Detection method: ENV={settings.env}, RAILWAY={os.getenv('RAILWAY_ENVIRONMENT')}"
         )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

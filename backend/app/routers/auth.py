@@ -1,27 +1,39 @@
 """
 ABOUTME: Google OAuth authentication router for single-user system.
 ABOUTME: Implements login, callback, logout, and session verification.
-ABOUTME: Includes CSRF protection via OAuth state parameter.
+ABOUTME: Includes CSRF protection via OAuth state parameter stored in Redis.
 """
 
+import json
 import logging
 import secrets
 from datetime import timedelta
 from typing import Optional
 
 import jwt
+import redis
 from app.middleware.rate_limit import limiter
 from app.utils.datetime_utils import utcnow
 from authlib.integrations.starlette_client import OAuth
 from config.settings import settings
 from fastapi import APIRouter, HTTPException, Request, status
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.config import Config
 
 logger = logging.getLogger(__name__)
 
-# In-memory store for OAuth state tokens (use Redis in production)
-_oauth_state_store: dict[str, bool] = {}
+# Redis client for OAuth state storage (HIGH-001 fix: scalable state management)
+_redis_client: Optional[redis.Redis] = None
+OAUTH_STATE_TTL = 600  # 10 minutes expiry for OAuth state tokens
+OAUTH_STATE_PREFIX = "oauth_state:"
+
+
+def get_redis_client() -> redis.Redis:
+    """Get or create Redis client for OAuth state storage."""
+    global _redis_client
+    if _redis_client is None:
+        _redis_client = redis.from_url(settings.redis_url, decode_responses=True)
+    return _redis_client
 
 router = APIRouter()
 
@@ -101,6 +113,7 @@ async def login(request: Request):
     Initiate Google OAuth login flow with CSRF protection.
 
     Generates a random state token to prevent CSRF attacks.
+    State is stored in Redis for horizontal scaling support (HIGH-001 fix).
     Redirects user to Google login page.
     Rate limited to prevent abuse.
     """
@@ -112,8 +125,22 @@ async def login(request: Request):
 
     # Generate CSRF protection state token
     state = secrets.token_urlsafe(32)
-    _oauth_state_store[state] = True
-    logger.info(f"Generated OAuth state token: {state[:8]}...")
+
+    # Store state in Redis with TTL (HIGH-001 fix: Redis instead of in-memory)
+    try:
+        redis_client = get_redis_client()
+        state_data = json.dumps({
+            "created_at": utcnow().isoformat(),
+            "redirect_uri": str(request.url_for("auth_callback"))
+        })
+        redis_client.setex(f"{OAUTH_STATE_PREFIX}{state}", OAUTH_STATE_TTL, state_data)
+        logger.info(f"Generated OAuth state token: {state[:8]}... (stored in Redis)")
+    except redis.RedisError as e:
+        logger.error(f"Failed to store OAuth state in Redis: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Authentication service temporarily unavailable.",
+        )
 
     # Redirect to Google OAuth with state parameter
     redirect_uri = request.url_for("auth_callback")
@@ -126,22 +153,42 @@ async def auth_callback(request: Request):
     """
     Handle OAuth callback from Google with CSRF validation.
 
-    Verifies state parameter, user email, and creates session token.
+    Verifies state parameter from Redis, user email, and creates session token.
+    State is deleted after use to prevent replay attacks (HIGH-001 fix).
     Rate limited to prevent abuse.
     """
     try:
-        # Validate CSRF state parameter
+        # Validate CSRF state parameter from Redis (HIGH-001 fix)
         state = request.query_params.get("state")
-        if not state or state not in _oauth_state_store:
-            logger.warning(f"Invalid or missing OAuth state parameter: {state}")
+        if not state:
+            logger.warning("Missing OAuth state parameter")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Invalid state parameter. Possible CSRF attack.",
             )
 
-        # Remove state from store (one-time use)
-        _oauth_state_store.pop(state, None)
-        logger.info(f"Validated OAuth state token: {state[:8]}...")
+        try:
+            redis_client = get_redis_client()
+            state_key = f"{OAUTH_STATE_PREFIX}{state}"
+            state_data = redis_client.get(state_key)
+
+            if not state_data:
+                logger.warning(f"OAuth state not found in Redis: {state[:8]}...")
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Invalid or expired state parameter. Please try logging in again.",
+                )
+
+            # Delete state immediately to prevent replay attacks
+            redis_client.delete(state_key)
+            logger.info(f"Validated and consumed OAuth state token: {state[:8]}...")
+
+        except redis.RedisError as e:
+            logger.error(f"Redis error during OAuth callback: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Authentication service temporarily unavailable.",
+            )
 
         # Get OAuth token from Google
         token = await oauth.google.authorize_access_token(request)
@@ -171,13 +218,28 @@ async def auth_callback(request: Request):
         # Create JWT token
         access_token = create_access_token(email)
 
-        # Redirect to frontend auth callback with token
+        # HIGH-003 fix: Set JWT in HttpOnly cookie instead of URL parameter
+        # This prevents token exposure in browser history, logs, and referrer headers
         frontend_url = (
             settings.cors_origins_list[0] if settings.cors_origins_list else "http://localhost:5173"
         )
-        redirect_url = f"{frontend_url}/auth/callback?token={access_token}"
 
-        return RedirectResponse(url=redirect_url)
+        # Redirect to frontend callback (no token in URL)
+        response = RedirectResponse(url=f"{frontend_url}/auth/callback")
+
+        # Set secure HttpOnly cookie with JWT
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,  # Not accessible to JavaScript
+            secure=settings.env == "production",  # HTTPS only in production
+            samesite="lax",  # CSRF protection
+            max_age=24 * 60 * 60,  # 24 hours (matches JWT expiry)
+            path="/",
+        )
+
+        logger.info(f"OAuth complete for {email}, token set in HttpOnly cookie")
+        return response
 
     except HTTPException:
         raise
@@ -192,11 +254,21 @@ async def auth_callback(request: Request):
 @router.post("/logout")
 async def logout():
     """
-    Logout (client-side token deletion).
+    Logout - clears HttpOnly authentication cookie.
 
-    Returns success message. Client should delete token.
+    HIGH-003 fix: Properly clears the HttpOnly cookie set during OAuth.
     """
-    return {"message": "Logged out successfully"}
+    response = JSONResponse(content={"message": "Logged out successfully"})
+
+    # Clear the HttpOnly cookie
+    response.delete_cookie(
+        key="access_token",
+        path="/",
+        secure=settings.env == "production",
+        samesite="lax",
+    )
+
+    return response
 
 
 @router.get("/me")
@@ -204,14 +276,25 @@ async def get_current_user(request: Request):
     """
     Get current authenticated user info.
 
-    Requires valid JWT token in Authorization header.
+    HIGH-003 fix: Accepts JWT from HttpOnly cookie OR Authorization header.
+    Cookie takes precedence for browser-based auth flow.
     """
-    # Get token from Authorization header
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
+    token = None
+
+    # Try HttpOnly cookie first (from OAuth flow)
+    cookie_token = request.cookies.get("access_token")
+    if cookie_token:
+        token = cookie_token
+
+    # Fall back to Authorization header (for API clients/tests)
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+
+    if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
-    token = auth_header.split(" ")[1]
     payload = verify_access_token(token)
 
     if not payload:
@@ -228,15 +311,27 @@ async def verify_token_endpoint(request: Request):
     """
     Verify if token is valid.
 
+    HIGH-003 fix: Accepts JWT from HttpOnly cookie OR Authorization header.
     Rate limited to prevent token enumeration attacks.
     Returns:
         Verification status
     """
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
+    token = None
+
+    # Try HttpOnly cookie first (from OAuth flow)
+    cookie_token = request.cookies.get("access_token")
+    if cookie_token:
+        token = cookie_token
+
+    # Fall back to Authorization header (for API clients/tests)
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+
+    if not token:
         return {"valid": False, "message": "No token provided"}
 
-    token = auth_header.split(" ")[1]
     payload = verify_access_token(token)
 
     if not payload:

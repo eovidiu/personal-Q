@@ -39,10 +39,56 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _validate_production_security(app: FastAPI) -> None:
+    """
+    SECURITY LAYER 4: Startup validation for production (HIGH-002 fix).
+
+    Validates that test authentication endpoints are NOT registered in production.
+    This is a defense-in-depth measure that catches configuration errors.
+    """
+    if settings.env != "production":
+        return
+
+    # Check all registered routes for test auth endpoints
+    test_auth_patterns = ["test-login", "test-validate", "auth-testing"]
+
+    for route in app.routes:
+        route_path = getattr(route, "path", "")
+        route_tags = getattr(route, "tags", [])
+
+        # Check path for test auth patterns
+        for pattern in test_auth_patterns:
+            if pattern in route_path:
+                logger.critical(
+                    f"🚨 SECURITY CRITICAL: Test auth endpoint found in production! "
+                    f"Path: {route_path}. Aborting startup."
+                )
+                raise RuntimeError(
+                    f"Test authentication endpoint '{route_path}' must not be "
+                    "registered in production. Check environment configuration."
+                )
+
+        # Check tags for test auth
+        if "auth-testing" in route_tags:
+            logger.critical(
+                f"🚨 SECURITY CRITICAL: Test auth router found in production! "
+                f"Path: {route_path}. Aborting startup."
+            )
+            raise RuntimeError(
+                f"Test authentication router found at '{route_path}' in production. "
+                "Check environment configuration."
+            )
+
+    logger.info("✓ Production security validation passed: no test auth endpoints registered")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
     logger.info("Starting Personal-Q AI Agent Manager...")
+
+    # SECURITY LAYER 4: Validate no test auth endpoints in production (HIGH-002 fix)
+    _validate_production_security(app)
 
     # Initialize database
     await init_db()

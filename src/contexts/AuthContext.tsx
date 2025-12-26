@@ -15,6 +15,7 @@ interface AuthContextType {
   login: () => void;
   logout: () => void;
   setToken: (token: string) => Promise<void>;
+  verifySession: () => Promise<boolean>;  // HIGH-003: Cookie-based auth verification
   clearError: () => void;
 }
 
@@ -126,11 +127,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       setError(null);
-      // Call backend logout
+      // Call backend logout with credentials to clear HttpOnly cookie
       await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
         method: 'POST',
+        credentials: 'include',  // HIGH-003: Include cookies for proper logout
         headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
+          'Authorization': token && token !== 'cookie-auth' ? `Bearer ${token}` : '',
         },
       });
     } catch (error) {
@@ -148,6 +150,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
   };
 
+  /**
+   * HIGH-003 fix: Verify session via HttpOnly cookie.
+   * Called after OAuth callback to check if authentication succeeded.
+   * Returns true if authenticated, false otherwise.
+   */
+  const verifySession = async (): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Call /auth/me with credentials to include HttpOnly cookie
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
+        credentials: 'include',  // Include cookies in request
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+        // Set a marker token for isAuthenticated check (actual token is in HttpOnly cookie)
+        setTokenState('cookie-auth');
+        localStorage.setItem(TOKEN_STORAGE_KEY, 'cookie-auth');
+        return true;
+      } else {
+        setUser(null);
+        setTokenState(null);
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
+        return false;
+      }
+    } catch (error) {
+      console.error('Session verification failed:', error);
+      setUser(null);
+      setTokenState(null);
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     token,
@@ -157,6 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     setToken,
+    verifySession,
     clearError,
   };
 
