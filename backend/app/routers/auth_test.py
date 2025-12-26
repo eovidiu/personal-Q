@@ -203,17 +203,19 @@ async def test_validate() -> dict:
     """
     TEST-ONLY: Validate test auth endpoint is accessible.
 
-    Returns environment info for debugging test setup.
+    Returns minimal validation info without exposing sensitive configuration.
+    LOW-001 fix: Removed debug_mode and allowed_email from response to prevent
+    configuration leakage that could aid attackers.
 
     Returns:
-        dict: Environment validation info
+        dict: Environment validation info (minimal, non-sensitive)
     """
     _validate_test_environment()
 
+    # LOW-001: Only return minimal, non-sensitive information
+    # Do not expose: debug_mode, allowed_email, or other configuration
     return {
         "test_auth_available": True,
-        "environment": settings.env,
-        "debug_mode": settings.debug,
-        "allowed_email": settings.allowed_email,
+        "environment": settings.env,  # Already known from deployment context
         "message": "Test authentication endpoint is accessible",
     }

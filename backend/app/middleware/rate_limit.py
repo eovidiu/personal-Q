@@ -29,13 +29,10 @@ def get_identifier(request: Request) -> str:
     # SECURITY FIX: Prevent rate limiting bypass via header spoofing (CVE-004)
     # Only trust X-Forwarded-For header from known reverse proxies
 
-    # List of trusted proxy IPs (configure based on your deployment)
-    # In production, this should be loaded from environment config
-    TRUSTED_PROXIES = {
-        "127.0.0.1",  # localhost
-        "172.16.0.0/12",  # Docker default network range
-        "10.0.0.0/8",  # Private network range
-    }
+    # LOW-004 fix: Trusted proxies now configurable via environment variable
+    # Set TRUSTED_PROXIES environment variable to customize for your deployment
+    # Example: TRUSTED_PROXIES="127.0.0.1,172.16.0.0/12,10.0.0.0/8,your-proxy-ip"
+    trusted_proxies = settings.trusted_proxies_list
 
     # Get the immediate client IP
     client_ip = get_remote_address(request)
@@ -48,7 +45,7 @@ def get_identifier(request: Request) -> str:
         is_trusted_proxy = False
 
         if client_addr:
-            for trusted in TRUSTED_PROXIES:
+            for trusted in trusted_proxies:
                 if "/" in trusted:
                     # It's a network range
                     if client_addr in ip_network(trusted):

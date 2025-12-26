@@ -8,6 +8,7 @@ from typing import Dict
 
 from app.db.database import get_db
 from app.dependencies.auth import get_current_user
+from app.middleware.rate_limit import get_rate_limit, limiter
 from app.models.api_key import APIKey
 from app.schemas.settings import (
     APIKeyCreate,
@@ -17,8 +18,8 @@ from app.schemas.settings import (
     ConnectionTestResponse,
 )
 from app.services.llm_service import get_llm_service
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
@@ -26,23 +27,69 @@ router = APIRouter()
 
 
 @router.get("/api-keys", response_model=list[APIKeyMasked])
+@limiter.limit(get_rate_limit("read_operations"))
 async def list_api_keys(
-    db: AsyncSession = Depends(get_db), current_user: Dict = Depends(get_current_user)
+    request: Request,  # MEDIUM-005: Required for rate limiter
+    db: AsyncSession = Depends(get_db),
+    current_user: Dict = Depends(get_current_user),
 ):
-    """List all API keys (masked, requires authentication)."""
-    result = await db.execute(select(APIKey))
-    api_keys = result.scalars().all()
+    """
+    List all API keys (masked, requires authentication).
 
-    return [APIKeyMasked.from_api_key(key) for key in api_keys]
+    MEDIUM-004 fix: Optimized query that checks for encrypted field existence
+    using SQL IS NOT NULL instead of decrypting all values. This reduces
+    CPU usage and prevents exposing decrypted keys in memory unnecessarily.
+    """
+    # MEDIUM-004: Query only non-encrypted columns + existence checks for encrypted ones
+    # This avoids decrypting all API keys just to list them
+    query = select(
+        APIKey.id,
+        APIKey.service_name,
+        APIKey.is_active,
+        # Check if encrypted fields have data without decrypting
+        case((APIKey.api_key.isnot(None), True), else_=False).label("has_api_key"),
+        case((APIKey.access_token.isnot(None), True), else_=False).label("has_access_token"),
+        case(
+            (
+                (APIKey.client_id.isnot(None)) & (APIKey.client_secret.isnot(None)),
+                True,
+            ),
+            else_=False,
+        ).label("has_client_credentials"),
+        APIKey.last_validated,
+        APIKey.created_at,
+        APIKey.updated_at,
+    )
+
+    result = await db.execute(query)
+    rows = result.all()
+
+    # Convert to response schema directly from query results
+    return [
+        APIKeyMasked(
+            id=row.id,
+            service_name=row.service_name,
+            is_active=row.is_active,
+            has_api_key=row.has_api_key,
+            has_access_token=row.has_access_token,
+            has_client_credentials=row.has_client_credentials,
+            last_validated=row.last_validated,
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+        )
+        for row in rows
+    ]
 
 
 @router.post("/api-keys", response_model=APIKeyMasked, status_code=201)
+@limiter.limit(get_rate_limit("settings_write"))
 async def create_or_update_api_key(
+    request: Request,  # MEDIUM-005: Required for rate limiter
     key_data: APIKeyCreate,
     db: AsyncSession = Depends(get_db),
     current_user: Dict = Depends(get_current_user),
 ):
-    """Create or update an API key (requires authentication)."""
+    """Create or update an API key (requires authentication, rate limited)."""
     # Check if key exists
     result = await db.execute(select(APIKey).where(APIKey.service_name == key_data.service_name))
     existing_key = result.scalar_one_or_none()
@@ -65,12 +112,14 @@ async def create_or_update_api_key(
 
 
 @router.post("/test-connection", response_model=ConnectionTestResponse)
+@limiter.limit(get_rate_limit("connection_test"))
 async def test_connection(
+    request: Request,  # MEDIUM-005: Required for rate limiter
     test_data: ConnectionTestRequest,
     db: AsyncSession = Depends(get_db),
     current_user: Dict = Depends(get_current_user),
 ):
-    """Test API connection for a service (requires authentication)."""
+    """Test API connection for a service (requires authentication, rate limited)."""
     # Get API key
     result = await db.execute(select(APIKey).where(APIKey.service_name == test_data.service_name))
     api_key = result.scalar_one_or_none()
@@ -108,7 +157,9 @@ async def test_connection(
 
 
 @router.delete("/api-keys/{service_name}", status_code=204)
+@limiter.limit(get_rate_limit("settings_write"))
 async def delete_api_key(
+    request: Request,  # MEDIUM-005: Required for rate limiter
     service_name: str,
     db: AsyncSession = Depends(get_db),
     current_user: Dict = Depends(get_current_user),

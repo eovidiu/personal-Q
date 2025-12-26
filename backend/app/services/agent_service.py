@@ -2,6 +2,7 @@
 Agent service layer for business logic.
 """
 
+import re
 import uuid
 from typing import List, Optional
 
@@ -12,6 +13,37 @@ from app.services.cache_service import cache_service
 from app.utils.datetime_utils import utcnow
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+
+def sanitize_search_input(search: str, max_length: int = 100) -> str:
+    """
+    Sanitize search input for defense-in-depth (MEDIUM-001 fix).
+
+    While SQLAlchemy ORM properly parameterizes queries, this provides
+    an additional layer of protection and limits resource usage.
+
+    Args:
+        search: Raw search input
+        max_length: Maximum allowed length
+
+    Returns:
+        Sanitized search string
+    """
+    if not search:
+        return ""
+
+    # Limit length to prevent DoS via extremely long search strings
+    search = search[:max_length]
+
+    # Remove SQL wildcards that could cause performance issues
+    # (user can search for literal text, we add wildcards in the query)
+    search = search.replace("%", "").replace("_", "")
+
+    # Allow alphanumeric, spaces, and common punctuation only
+    # This prevents any special characters that might cause issues
+    search = re.sub(r"[^\w\s\-_.,!?@#]", "", search, flags=re.UNICODE)
+
+    return search.strip()
 
 
 class AgentService:
@@ -122,11 +154,15 @@ class AgentService:
             query = query.where(Agent.agent_type == agent_type)
 
         if search:
-            # Use parameterized query - SQLAlchemy handles escaping
-            search_filter = or_(
-                Agent.name.ilike(f"%{search}%"), Agent.description.ilike(f"%{search}%")
-            )
-            query = query.where(search_filter)
+            # MEDIUM-001 fix: Sanitize search input for defense-in-depth
+            sanitized_search = sanitize_search_input(search)
+            if sanitized_search:
+                # Use parameterized query - SQLAlchemy handles escaping
+                search_filter = or_(
+                    Agent.name.ilike(f"%{sanitized_search}%"),
+                    Agent.description.ilike(f"%{sanitized_search}%"),
+                )
+                query = query.where(search_filter)
 
         if tags:
             # Filter agents that have any of the specified tags

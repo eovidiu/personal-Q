@@ -24,13 +24,18 @@ class APIClient {
       withCredentials: true,
     });
 
-    // Request interceptor - add auth token
+    // Request interceptor - LOW-003 fix: Use sessionStorage, rely on HttpOnly cookies
     this.client.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem(TOKEN_STORAGE_KEY);
-        if (token) {
+        // LOW-003: Primary auth is via HttpOnly cookie (withCredentials: true)
+        // The token in sessionStorage is just a marker for UI state
+        // Only add Bearer header in test mode when we have an actual token
+        const token = sessionStorage.getItem(TOKEN_STORAGE_KEY);
+        if (token && token !== 'cookie-auth') {
+          // Test mode: actual token (for development/testing scenarios)
           config.headers.Authorization = `Bearer ${token}`;
         }
+        // Production: HttpOnly cookie is sent automatically via withCredentials
         return config;
       },
       (error) => {
@@ -45,8 +50,8 @@ class APIClient {
         // Handle 401 Unauthorized - token expired or invalid
         if (error.response?.status === 401) {
           console.warn('Unauthorized: Token expired or invalid. Redirecting to login...');
-          // Clear token
-          localStorage.removeItem(TOKEN_STORAGE_KEY);
+          // LOW-003: Clear sessionStorage marker
+          sessionStorage.removeItem(TOKEN_STORAGE_KEY);
           // Redirect to login page
           window.location.href = '/login';
         }
@@ -199,12 +204,16 @@ export class WebSocketClient {
       console.log('WebSocket connected');
       this.reconnectAttempts = 0;
 
-      // Send authentication message immediately after connection
-      const token = localStorage.getItem('personal_q_token');
-      if (token) {
+      // LOW-003 fix: Check sessionStorage for token marker
+      // The actual JWT is in HttpOnly cookie - WebSocket auth uses cookie validation
+      // We send a marker to trigger server-side cookie verification
+      const tokenMarker = sessionStorage.getItem(TOKEN_STORAGE_KEY);
+      if (tokenMarker) {
+        // Signal to server that we have a valid session (server will verify cookie)
         this.ws?.send(JSON.stringify({
           action: 'authenticate',
-          token: token
+          // Don't send actual token - server will validate via cookie on the HTTP upgrade
+          session: 'cookie-auth'
         }));
       }
     };

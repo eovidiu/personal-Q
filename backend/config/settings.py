@@ -22,7 +22,27 @@ class Settings(BaseSettings):
     app_name: str = "Personal-Q AI Agent Manager"
     app_version: str = "1.0.0"
     env: str = "development"
-    debug: bool = False  # Set via environment variable in development
+    debug: bool = False  # Set via environment variable in development ONLY
+
+    @field_validator("debug")
+    @classmethod
+    def validate_debug_mode(cls, v: bool, info) -> bool:
+        """
+        LOW-001 fix: Ensure debug mode is NEVER enabled in production.
+
+        Debug mode can leak sensitive information in error responses.
+        This validator forces debug=False in production regardless of config.
+        """
+        env = info.data.get("env", "development")
+
+        if env == "production" and v is True:
+            logger.warning(
+                "⚠️  SECURITY: DEBUG=true attempted in production environment. "
+                "Forcing DEBUG=false to prevent information leakage."
+            )
+            return False
+
+        return v
 
     # API
     api_host: str = "0.0.0.0"  # nosec B104 - Required for Docker container
@@ -57,6 +77,16 @@ class Settings(BaseSettings):
 
     # Security
     encryption_key: Optional[str] = None  # Fernet key for encrypting sensitive data
+
+    # LOW-004: Trusted proxy configuration for X-Forwarded-For header validation
+    # Comma-separated list of trusted proxy IPs or CIDR ranges
+    # Example: "127.0.0.1,172.16.0.0/12,10.0.0.0/8"
+    trusted_proxies: str = "127.0.0.1,172.16.0.0/12,10.0.0.0/8"
+
+    @property
+    def trusted_proxies_list(self) -> set[str]:
+        """Parse trusted proxies string into a set of IPs/networks."""
+        return {p.strip() for p in self.trusted_proxies.split(",") if p.strip()}
 
     # Google OAuth
     google_client_id: Optional[str] = None
