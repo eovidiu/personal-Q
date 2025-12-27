@@ -5,9 +5,11 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install system dependencies
+# Note: npm is required because Railway dashboard has startCommand="npm start"
 RUN apt-get update && apt-get install -y \
     gcc \
     curl \
+    npm \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure pip for better dependency resolution
@@ -21,6 +23,8 @@ RUN pip install --no-cache-dir --upgrade pip==24.3.1 setuptools==75.6.0 wheel==0
 # Copy package configuration first
 # Note: Railway uses repo root as build context with backend/Dockerfile
 COPY backend/pyproject.toml backend/setup.py ./
+# Copy package.json for Railway's "npm start" command workaround
+COPY backend/package.json ./
 
 # Copy application code
 COPY backend/app ./app
