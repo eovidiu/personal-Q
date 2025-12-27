@@ -19,13 +19,14 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 RUN pip install --no-cache-dir --upgrade pip==24.3.1 setuptools==75.6.0 wheel==0.45.0
 
 # Copy package configuration first
-COPY pyproject.toml setup.py ./
+# Note: Railway uses repo root as build context with backend/Dockerfile
+COPY backend/pyproject.toml backend/setup.py ./
 
 # Copy application code
-COPY app ./app
-COPY config ./config
-COPY migrations ./migrations
-COPY entrypoint.sh ./entrypoint.sh
+COPY backend/app ./app
+COPY backend/config ./config
+COPY backend/migrations ./migrations
+COPY backend/entrypoint.sh ./entrypoint.sh
 
 # Install package in editable mode with dependencies
 # Increased timeout for CrewAI dependency resolution
