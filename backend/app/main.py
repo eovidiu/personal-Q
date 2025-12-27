@@ -30,6 +30,7 @@ from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from starlette.middleware.sessions import SessionMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 # Configure logging
 logging.basicConfig(
@@ -328,6 +329,10 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization", "Accept", "X-Request-ID"],
     max_age=600,  # Cache preflight requests for 10 minutes
 )
+
+# Handle proxy headers (X-Forwarded-Proto, X-Forwarded-For) from Railway/reverse proxies
+# This ensures OAuth redirect URIs use https:// instead of http://
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
 
 
 @app.get("/")
