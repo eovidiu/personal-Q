@@ -228,12 +228,13 @@ async def auth_callback(request: Request):
         response = RedirectResponse(url=f"{frontend_url}/auth/callback")
 
         # Set secure HttpOnly cookie with JWT
+        # Note: samesite="none" required for cross-domain cookies (backend/frontend on different domains)
         response.set_cookie(
             key="access_token",
             value=access_token,
             httponly=True,  # Not accessible to JavaScript
-            secure=settings.env == "production",  # HTTPS only in production
-            samesite="lax",  # CSRF protection
+            secure=True,  # Required when samesite="none"
+            samesite="none",  # Allow cross-domain (backend railway.app, frontend eovidiu.co.uk)
             max_age=24 * 60 * 60,  # 24 hours (matches JWT expiry)
             path="/",
         )
@@ -245,8 +246,8 @@ async def auth_callback(request: Request):
             key="csrf_token",
             value=csrf_token,
             httponly=False,  # Must be readable by JavaScript
-            secure=settings.env == "production",
-            samesite="strict",  # Stricter than access_token for CSRF protection
+            secure=True,  # Required when samesite="none"
+            samesite="none",  # Allow cross-domain (matches access_token)
             max_age=24 * 60 * 60,
             path="/",
         )
