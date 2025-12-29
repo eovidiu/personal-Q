@@ -90,10 +90,10 @@ def verify_access_token(token: str) -> Optional[dict]:
     try:
         payload = jwt.decode(token, settings.jwt_secret_key, algorithms=["HS256"])
 
-        # Verify email is the allowed user
-        if payload.get("email") != settings.allowed_email:
+        # Verify email is in the allowed list
+        if not settings.is_email_allowed(payload.get("email", "")):
             logger.warning(
-                f"Token email mismatch: {payload.get('email')} != {settings.allowed_email}"
+                f"Token email not in allowed list: {payload.get('email')}"
             )
             return None
 
@@ -204,12 +204,12 @@ async def auth_callback(request: Request):
 
         email = user_info.get("email")
 
-        # Verify email matches allowed user
-        if email != settings.allowed_email:
+        # Verify email is in the allowed list
+        if not settings.is_email_allowed(email or ""):
             logger.warning(f"Unauthorized login attempt from {email}")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Access denied. Only {settings.allowed_email} is authorized.",
+                detail="Access denied. Your email is not authorized.",
             )
 
         # Log successful auth

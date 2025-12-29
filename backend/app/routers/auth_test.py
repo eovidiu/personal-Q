@@ -98,14 +98,14 @@ class TestLoginRequest(BaseModel):
     @classmethod
     def validate_email(cls, v: str) -> str:
         """
-        Validate email matches allowed user.
+        Validate email is in the allowed list.
 
         SECURITY: Does NOT reveal ALLOWED_EMAIL to prevent enumeration attacks.
         """
         if not settings.allowed_email:
             raise ValueError("Test authentication not available: system not configured.")
 
-        if v != settings.allowed_email:
+        if not settings.is_email_allowed(v):
             # SECURITY: Generic error message prevents email enumeration
             raise ValueError("Email not authorized for test authentication.")
 

@@ -92,7 +92,20 @@ class Settings(BaseSettings):
     google_client_id: Optional[str] = None
     google_client_secret: Optional[str] = None
     jwt_secret_key: Optional[str] = None
-    allowed_email: Optional[str] = None  # Single user email allowed to authenticate
+    allowed_email: Optional[str] = None  # Comma-separated list of emails allowed to authenticate
+
+    @property
+    def allowed_emails_list(self) -> list[str]:
+        """Parse ALLOWED_EMAIL string into list of allowed emails."""
+        if not self.allowed_email:
+            return []
+        return [email.strip().lower() for email in self.allowed_email.split(",") if email.strip()]
+
+    def is_email_allowed(self, email: str) -> bool:
+        """Check if an email is in the allowed list (case-insensitive)."""
+        if not self.allowed_email:
+            return False
+        return email.lower() in self.allowed_emails_list
 
     @field_validator("encryption_key")
     @classmethod

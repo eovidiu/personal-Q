@@ -89,8 +89,8 @@ async def verify_websocket_token(token: Optional[str]) -> Optional[dict]:
     try:
         payload = jwt.decode(token, settings.jwt_secret_key, algorithms=["HS256"])
 
-        # Verify email matches allowed user
-        if payload.get("email") != settings.allowed_email:
+        # Verify email is in the allowed list
+        if not settings.is_email_allowed(payload.get("email", "")):
             logger.warning(f"WebSocket: Unauthorized email in token: {payload.get('email')}")
             return None
 

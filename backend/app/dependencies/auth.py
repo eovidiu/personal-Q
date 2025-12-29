@@ -50,8 +50,8 @@ async def get_current_user(
 
         email = payload.get("email")
 
-        # Verify email matches allowed user
-        if email != settings.allowed_email:
+        # Verify email is in the allowed list
+        if not settings.is_email_allowed(email or ""):
             logger.warning(f"Token contains unauthorized email: {email}")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
