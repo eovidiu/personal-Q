@@ -9,6 +9,7 @@ import logging
 import secrets
 from datetime import timedelta
 from typing import Optional
+from urllib.parse import urlparse
 
 import jwt
 import redis
@@ -34,6 +35,42 @@ def get_redis_client() -> redis.Redis:
     if _redis_client is None:
         _redis_client = redis.from_url(settings.redis_url, decode_responses=True)
     return _redis_client
+
+
+def _get_cookie_domain(frontend_url: str) -> Optional[str]:
+    """
+    Extract cookie domain from frontend URL for cross-subdomain sharing.
+
+    For URLs like https://stage.personal-q.eovidiu.co.uk, returns .eovidiu.co.uk
+    This allows cookies to be shared between api.personal-q.eovidiu.co.uk and
+    stage.personal-q.eovidiu.co.uk.
+
+    Returns None for localhost (no domain needed for local development).
+    """
+    parsed = urlparse(frontend_url)
+    host = parsed.hostname or ""
+
+    # No domain for localhost
+    if host in ("localhost", "127.0.0.1") or host.startswith("localhost:"):
+        return None
+
+    # Extract eTLD+1 (e.g., eovidiu.co.uk from stage.personal-q.eovidiu.co.uk)
+    # Handle common two-part TLDs like .co.uk, .com.au, etc.
+    parts = host.split(".")
+    if len(parts) >= 3:
+        # Check for two-part TLDs
+        two_part_tlds = {"co.uk", "com.au", "co.nz", "co.za", "com.br", "co.jp"}
+        potential_tld = ".".join(parts[-2:])
+        if potential_tld in two_part_tlds:
+            # Return .domain.co.uk format
+            if len(parts) >= 3:
+                return "." + ".".join(parts[-3:])
+        else:
+            # Return .domain.com format
+            return "." + ".".join(parts[-2:])
+
+    return None
+
 
 router = APIRouter()
 
@@ -228,15 +265,18 @@ async def auth_callback(request: Request):
         response = RedirectResponse(url=f"{frontend_url}/auth/callback")
 
         # Set secure HttpOnly cookie with JWT
-        # Note: samesite="none" required for cross-domain cookies (backend/frontend on different domains)
+        # Both frontend and backend are on same eTLD+1 (.eovidiu.co.uk), so samesite="lax" works
+        # Domain is set to share cookie across subdomains (stage.personal-q and api.personal-q)
+        cookie_domain = _get_cookie_domain(frontend_url)
         response.set_cookie(
             key="access_token",
             value=access_token,
             httponly=True,  # Not accessible to JavaScript
-            secure=True,  # Required when samesite="none"
-            samesite="none",  # Allow cross-domain (backend railway.app, frontend eovidiu.co.uk)
+            secure=settings.env != "development",  # HTTPS required in staging/production
+            samesite="lax",  # Safe now that we're on same eTLD+1
             max_age=24 * 60 * 60,  # 24 hours (matches JWT expiry)
             path="/",
+            domain=cookie_domain,  # Share across subdomains
         )
 
         # Issue #111 fix: Set explicit CSRF token for defense-in-depth
@@ -246,10 +286,11 @@ async def auth_callback(request: Request):
             key="csrf_token",
             value=csrf_token,
             httponly=False,  # Must be readable by JavaScript
-            secure=True,  # Required when samesite="none"
-            samesite="none",  # Allow cross-domain (matches access_token)
+            secure=settings.env != "development",
+            samesite="lax",
             max_age=24 * 60 * 60,
             path="/",
+            domain=cookie_domain,
         )
 
         logger.info(f"OAuth complete for {email}, token set in HttpOnly cookie")
@@ -304,20 +345,28 @@ async def logout(request: Request):
 
     response = JSONResponse(content={"message": "Logged out successfully"})
 
+    # Get cookie domain from CORS origins (same logic as login)
+    frontend_url = (
+        settings.cors_origins_list[0] if settings.cors_origins_list else "http://localhost:5173"
+    )
+    cookie_domain = _get_cookie_domain(frontend_url)
+
     # Clear the HttpOnly cookie
     response.delete_cookie(
         key="access_token",
         path="/",
-        secure=settings.env == "production",
+        secure=settings.env != "development",
         samesite="lax",
+        domain=cookie_domain,
     )
 
     # Issue #111: Also clear the CSRF token cookie
     response.delete_cookie(
         key="csrf_token",
         path="/",
-        secure=settings.env == "production",
-        samesite="strict",
+        secure=settings.env != "development",
+        samesite="lax",
+        domain=cookie_domain,
     )
 
     return response
