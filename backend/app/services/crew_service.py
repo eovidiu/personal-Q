@@ -6,7 +6,7 @@ ABOUTME: Uses LangChain-compatible ChatAnthropic for proper integration.
 from typing import Any, Dict, List, Optional
 
 from app.models.agent import Agent, AgentType
-from app.services.llm_service import llm_service
+from app.services.llm_service import get_anthropic_api_key
 from config.settings import settings
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -89,18 +89,21 @@ class CrewService:
                 "task_description": task_description,
             }
 
-        # Configure LLM for agent using LangChain-compatible ChatAnthropic
-        if not llm_service.api_key:
+        # Get API key from environment variable
+        try:
+            api_key = get_anthropic_api_key()
+        except ValueError as e:
             return {
                 "success": False,
-                "error": "Anthropic API key not configured. Please set API key in Settings.",
+                "error": str(e),
                 "agent_id": agent.id,
                 "task_description": task_description,
             }
 
+        # Configure LLM for agent using LangChain-compatible ChatAnthropic
         llm = ChatAnthropic(
             model=agent.model or settings.default_model,
-            anthropic_api_key=llm_service.api_key,
+            anthropic_api_key=api_key,
             temperature=agent.temperature or settings.default_temperature,
             max_tokens=agent.max_tokens or settings.default_max_tokens,
             streaming=True,  # Enable streaming for real-time responses
@@ -169,10 +172,13 @@ class CrewService:
         if len(agents) != len(task_descriptions):
             raise ValueError("Number of agents must match number of tasks")
 
-        if not llm_service.api_key:
+        # Get API key from environment variable
+        try:
+            api_key = get_anthropic_api_key()
+        except ValueError as e:
             return {
                 "success": False,
-                "error": "Anthropic API key not configured. Please set API key in Settings.",
+                "error": str(e),
                 "agents": [{"id": a.id, "name": a.name} for a in agents],
             }
 
@@ -180,7 +186,7 @@ class CrewService:
         primary_agent = agents[0]
         llm = ChatAnthropic(
             model=primary_agent.model or settings.default_model,
-            anthropic_api_key=llm_service.api_key,
+            anthropic_api_key=api_key,
             temperature=primary_agent.temperature or settings.default_temperature,
             max_tokens=primary_agent.max_tokens or settings.default_max_tokens,
             streaming=True,

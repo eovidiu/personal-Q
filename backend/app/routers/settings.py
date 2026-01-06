@@ -26,6 +26,31 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.get("/api-key-status")
+async def get_api_key_status(
+    request: Request,
+    current_user: Dict = Depends(get_current_user),
+):
+    """
+    Get API key configuration status.
+
+    Returns whether PERSONAL_Q_API_KEY environment variable is set.
+    """
+    from config.settings import settings
+
+    if settings.personal_q_api_key:
+        return {
+            "configured": True,
+            "variable_name": "PERSONAL_Q_API_KEY",
+            "message": "API key configured via environment variable",
+        }
+
+    return {
+        "configured": False,
+        "message": "PERSONAL_Q_API_KEY environment variable is not set.",
+    }
+
+
 @router.get("/api-keys", response_model=list[APIKeyMasked])
 @limiter.limit(get_rate_limit("read_operations"))
 async def list_api_keys(

@@ -26,6 +26,26 @@ logger = logging.getLogger(__name__)
 llm_breaker = CircuitBreaker(fail_max=5, reset_timeout=60, name="llm_service")
 
 
+def get_anthropic_api_key() -> str:
+    """
+    Get Anthropic API key from environment variable.
+
+    Returns:
+        API key string
+
+    Raises:
+        ValueError: If PERSONAL_Q_API_KEY is not set
+    """
+    if not settings.personal_q_api_key:
+        raise ValueError(
+            "PERSONAL_Q_API_KEY environment variable is not set. "
+            "This is required for agent execution."
+        )
+
+    logger.info("Using Anthropic API key from PERSONAL_Q_API_KEY")
+    return settings.personal_q_api_key
+
+
 class LLMService:
     """Service for LLM operations using Claude with resilience features."""
 

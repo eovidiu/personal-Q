@@ -71,6 +71,9 @@ class Settings(BaseSettings):
     default_temperature: float = 0.7
     default_max_tokens: int = 4096
 
+    # LLM API Key (primary source - takes precedence over database)
+    personal_q_api_key: Optional[str] = None  # Anthropic API key from environment
+
     # Logging
     log_level: str = "INFO"
     log_format: str = "json"
