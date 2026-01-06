@@ -17,16 +17,27 @@ def _init_database_sync():
     Called at module load time to ensure tables exist before any tasks run.
     """
     try:
-        from app.db.database import Base, engine
+        from app.db.database import Base
         from app.models import Agent, Task, Activity, APIKey, Schedule  # noqa: F401 - Import to register models
 
-        # Create tables synchronously using sync engine
         import sqlalchemy
-        sync_url = settings.database_url  # Already sync format: sqlite:///...
-        sync_engine = sqlalchemy.create_engine(
-            sync_url,
-            connect_args={"check_same_thread": False} if "sqlite" in sync_url else {},
-        )
+
+        # Determine sync URL based on database type
+        db_url = settings.database_url
+
+        if db_url.startswith("sqlite"):
+            # SQLite: already in sync format
+            sync_url = db_url
+            engine_args = {"connect_args": {"check_same_thread": False}}
+        elif db_url.startswith("postgresql"):
+            # PostgreSQL: use psycopg2 sync driver (already default for postgresql://)
+            sync_url = db_url
+            engine_args = {}
+        else:
+            logger.error(f"Unsupported database URL scheme: {db_url}")
+            return
+
+        sync_engine = sqlalchemy.create_engine(sync_url, **engine_args)
         Base.metadata.create_all(bind=sync_engine)
         sync_engine.dispose()
         logger.info("Database tables initialized successfully")

@@ -22,6 +22,8 @@ dependencies = [
     "sqlalchemy==2.0.36",
     "alembic==1.13.3",
     "aiosqlite==0.20.0",
+    "asyncpg>=0.29.0",  # Async PostgreSQL driver
+    "psycopg2-binary>=2.9.9",  # Sync PostgreSQL driver (for Celery/Alembic)
     "lancedb>=0.17.0",
     "sentence-transformers>=2.2.0",  # For LanceDB embeddings
     "anthropic>=0.39.0",

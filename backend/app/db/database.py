@@ -9,19 +9,38 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.pool import StaticPool
 
-# Convert SQLite URL to async format
-DATABASE_URL = settings.database_url.replace("sqlite:///", "sqlite+aiosqlite:///")
+# Determine database type and configure accordingly
+_db_url = settings.database_url
 
-# Create data directory if it doesn't exist
-os.makedirs(os.path.dirname(DATABASE_URL.replace("sqlite+aiosqlite:///", "")), exist_ok=True)
+if _db_url.startswith("sqlite"):
+    # SQLite: use aiosqlite async driver
+    DATABASE_URL = _db_url.replace("sqlite:///", "sqlite+aiosqlite:///")
 
-# Create async engine
-engine = create_async_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {},
-    poolclass=StaticPool if "sqlite" in DATABASE_URL else None,
-    echo=settings.debug,
-)
+    # Create data directory if it doesn't exist
+    db_path = DATABASE_URL.replace("sqlite+aiosqlite:///", "")
+    if db_path and os.path.dirname(db_path):
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+
+    # SQLite-specific engine settings
+    engine = create_async_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+        echo=settings.debug,
+    )
+elif _db_url.startswith("postgresql"):
+    # PostgreSQL: use asyncpg async driver
+    DATABASE_URL = _db_url.replace("postgresql://", "postgresql+asyncpg://")
+
+    # PostgreSQL engine settings
+    engine = create_async_engine(
+        DATABASE_URL,
+        echo=settings.debug,
+        pool_size=5,
+        max_overflow=10,
+    )
+else:
+    raise ValueError(f"Unsupported database URL scheme: {_db_url}")
 
 # Create session factory
 AsyncSessionLocal = async_sessionmaker(
