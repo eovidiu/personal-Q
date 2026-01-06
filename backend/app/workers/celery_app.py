@@ -2,16 +2,40 @@
 Celery application configuration.
 """
 
-import asyncio
 import logging
-import sys
 
 from celery import Celery
 from celery.schedules import crontab
-from celery.signals import worker_init
 from config.settings import settings
 
 logger = logging.getLogger(__name__)
+
+
+def _init_database_sync():
+    """
+    Initialize database tables synchronously.
+    Called at module load time to ensure tables exist before any tasks run.
+    """
+    try:
+        from app.db.database import Base, engine
+        from app.models import Agent, Task, Activity, APIKey, Schedule  # noqa: F401 - Import to register models
+
+        # Create tables synchronously using sync engine
+        import sqlalchemy
+        sync_url = settings.database_url  # Already sync format: sqlite:///...
+        sync_engine = sqlalchemy.create_engine(
+            sync_url,
+            connect_args={"check_same_thread": False} if "sqlite" in sync_url else {},
+        )
+        Base.metadata.create_all(bind=sync_engine)
+        sync_engine.dispose()
+        logger.info("Database tables initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}")
+
+
+# Initialize database at module load time
+_init_database_sync()
 
 # Create Celery app
 celery_app = Celery(
@@ -46,26 +70,6 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(minute="*/15"),  # Every 15 minutes
     },
 }
-
-@worker_init.connect
-def init_worker(**kwargs):
-    """
-    Initialize database when Celery worker starts.
-
-    This ensures the worker has access to all database tables,
-    particularly important when running in separate containers
-    where SQLite databases are not shared.
-    """
-    logger.info("Initializing database for Celery worker...")
-
-    # Import here to avoid circular imports
-    from app.db.database import init_db
-
-    # Run the async init_db function
-    asyncio.run(init_db())
-
-    logger.info("Database initialized for Celery worker")
-
 
 if __name__ == "__main__":
     celery_app.start()
