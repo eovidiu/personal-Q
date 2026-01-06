@@ -15,15 +15,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { AgentForm } from "@/personal-q/components/agent-form";
 import { AgentActivity } from "@/personal-q/components/agent-activity";
 import { useAgent } from "@/hooks/useAgent";
 import { useUpdateAgent } from "@/hooks/useUpdateAgent";
 import { useUpdateAgentStatus } from "@/hooks/useUpdateAgentStatus";
 import { useAgentActivities } from "@/hooks/useActivities";
+import { useCreateTask } from "@/hooks/useCreateTask";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { AgentStatusUpdate } from "@/types/agent";
@@ -40,6 +46,7 @@ import {
   TagIcon,
   AlertCircle,
   Loader2,
+  RocketIcon,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
@@ -73,6 +80,9 @@ const statusConfig = {
 export function AgentDetailPage() {
   const { id } = useParams();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isRunTaskDialogOpen, setIsRunTaskDialogOpen] = useState(false);
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskDescription, setTaskDescription] = useState("");
 
   // Fetch agent data and activities
   const { data: agent, isLoading, error } = useAgent(id);
@@ -81,6 +91,7 @@ export function AgentDetailPage() {
   // Mutations
   const updateAgentMutation = useUpdateAgent(id || '');
   const updateStatusMutation = useUpdateAgentStatus(id || '');
+  const createTaskMutation = useCreateTask();
 
   // Handle status toggle
   const handleStatusToggle = async () => {
@@ -111,6 +122,27 @@ export function AgentDetailPage() {
       console.error('[AgentDetailPage] Failed to update agent:', error);
       toast.error(`Failed to update agent: ${error?.response?.data?.detail || error?.message || 'Unknown error'}`, { id: toastId });
       // Don't close dialog on error so user can try again
+    }
+  };
+
+  // Handle run task
+  const handleRunTask = async () => {
+    if (!agent || !taskTitle.trim()) return;
+
+    const toastId = toast.loading('Creating task...');
+    try {
+      await createTaskMutation.mutateAsync({
+        agent_id: agent.id,
+        title: taskTitle.trim(),
+        description: taskDescription.trim() || undefined,
+      });
+      toast.success('Task created and queued for execution', { id: toastId });
+      setIsRunTaskDialogOpen(false);
+      setTaskTitle("");
+      setTaskDescription("");
+    } catch (error: any) {
+      console.error('Failed to create task:', error);
+      toast.error(`Failed to create task: ${error?.response?.data?.detail || error?.message || 'Unknown error'}`, { id: toastId });
     }
   };
 
@@ -198,6 +230,7 @@ export function AgentDetailPage() {
             Configure
           </Button>
           <Button
+            variant="outline"
             size="sm"
             onClick={handleStatusToggle}
             disabled={updateStatusMutation.isPending}
@@ -210,6 +243,18 @@ export function AgentDetailPage() {
               <PlayIcon className="h-4 w-4 mr-2" />
             )}
             {agent.status === "active" ? "Pause" : "Activate"}
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setIsRunTaskDialogOpen(true)}
+            disabled={createTaskMutation.isPending}
+          >
+            {createTaskMutation.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RocketIcon className="h-4 w-4 mr-2" />
+            )}
+            Run Task
           </Button>
         </div>
       </div>
@@ -414,6 +459,58 @@ export function AgentDetailPage() {
             onSubmit={handleConfigUpdate}
             onCancel={() => setIsEditDialogOpen(false)}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Run Task Dialog */}
+      <Dialog open={isRunTaskDialogOpen} onOpenChange={setIsRunTaskDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Run Task with {agent.name}</DialogTitle>
+            <DialogDescription>
+              Describe the task you want this agent to perform. The task will be queued and executed.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="task-title">Task Title</Label>
+              <Input
+                id="task-title"
+                placeholder="e.g., Analyze sales data"
+                value={taskTitle}
+                onChange={(e) => setTaskTitle(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="task-description">Description (optional)</Label>
+              <Textarea
+                id="task-description"
+                placeholder="Provide additional details about what you want the agent to do..."
+                value={taskDescription}
+                onChange={(e) => setTaskDescription(e.target.value)}
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsRunTaskDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRunTask}
+              disabled={!taskTitle.trim() || createTaskMutation.isPending}
+            >
+              {createTaskMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RocketIcon className="h-4 w-4 mr-2" />
+              )}
+              Run Task
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
