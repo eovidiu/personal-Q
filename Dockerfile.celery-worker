@@ -51,6 +51,6 @@ USER appuser
 # Set Python path
 ENV PYTHONPATH=/app
 
-# Run celery worker directly (bypasses entrypoint.sh)
-# The worker_init signal in celery_app.py will initialize the database
-CMD ["celery", "-A", "app.workers.celery_app", "worker", "--loglevel=info", "--pool=solo"]
+# Use ENTRYPOINT (not CMD) since Railway's startCommand overrides CMD
+# The database initialization happens at module load time in celery_app.py
+ENTRYPOINT ["celery", "-A", "app.workers.celery_app", "worker", "--loglevel=info", "--pool=solo"]
