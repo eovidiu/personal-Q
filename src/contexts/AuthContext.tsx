@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { TOKEN_STORAGE_KEY, API_BASE_URL, isTokenExpired } from '@/constants/auth';
 
 interface User {
@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * In production OAuth flow, JWT is set in HttpOnly cookie by the backend.
    * This function is primarily for development/testing scenarios.
    */
-  const setToken = async (newToken: string): Promise<void> => {
+  const setToken = useCallback(async (newToken: string): Promise<void> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -121,16 +121,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const login = () => {
+  const login = useCallback(() => {
     // Clear any existing errors
     setError(null);
     // Redirect to backend OAuth endpoint
     window.location.href = `${API_BASE_URL}/api/v1/auth/login`;
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       setError(null);
       // Issue #111: Get CSRF token from cookie for defense-in-depth protection
@@ -156,11 +156,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setTokenState(null);
       setUser(null);
     }
-  };
+  }, []);
 
-  const clearError = () => {
+  const clearError = useCallback(() => {
     setError(null);
-  };
+  }, []);
 
   /**
    * HIGH-003 fix: Verify session via HttpOnly cookie.
@@ -168,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * Called after OAuth callback to check if authentication succeeded.
    * Returns true if authenticated, false otherwise.
    */
-  const verifySession = async (): Promise<boolean> => {
+  const verifySession = useCallback(async (): Promise<boolean> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -200,7 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   const value: AuthContextType = {
     user,
