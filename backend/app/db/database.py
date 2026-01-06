@@ -33,11 +33,14 @@ elif _db_url.startswith("postgresql"):
     DATABASE_URL = _db_url.replace("postgresql://", "postgresql+asyncpg://")
 
     # PostgreSQL engine settings
+    # Note: statement_cache_size=0 is required for Supabase/PgBouncer compatibility
+    # PgBouncer in transaction mode doesn't support prepared statements
     engine = create_async_engine(
         DATABASE_URL,
         echo=settings.debug,
         pool_size=5,
         max_overflow=10,
+        connect_args={"statement_cache_size": 0},
     )
 else:
     raise ValueError(f"Unsupported database URL scheme: {_db_url}")
