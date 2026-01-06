@@ -1,6 +1,7 @@
 """
 Authentication dependencies for protecting routes.
 Provides JWT token verification and user extraction.
+Supports both HttpOnly cookie auth (OAuth flow) and Bearer token auth (API clients).
 """
 
 import logging
@@ -8,7 +9,7 @@ from typing import Dict, Optional
 
 import jwt
 from config.settings import settings
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 logger = logging.getLogger(__name__)
@@ -18,14 +19,18 @@ security = HTTPBearer()
 
 
 async def get_current_user(
+    request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False)),
 ) -> Dict[str, str]:
     """
     Verify JWT token and return current user information.
-    In debug mode, authentication is bypassed for development convenience.
+
+    HIGH-003 fix: Supports both HttpOnly cookie (OAuth flow) and Bearer token (API clients).
+    Cookie takes precedence for browser-based auth flow.
 
     Args:
-        credentials: HTTP Authorization credentials with Bearer token
+        request: FastAPI request object (for cookie access)
+        credentials: HTTP Authorization credentials with Bearer token (optional)
 
     Returns:
         User information dict with email
@@ -33,16 +38,24 @@ async def get_current_user(
     Raises:
         HTTPException: If token is invalid, expired, or user not authorized
     """
-    # SECURITY FIX: Remove debug authentication bypass completely (CVE-001)
-    # Authentication is always required, no exceptions
-    if credentials is None:
+    token = None
+
+    # HIGH-003 fix: Try HttpOnly cookie first (from OAuth flow)
+    cookie_token = request.cookies.get("access_token")
+    if cookie_token:
+        token = cookie_token
+
+    # Fall back to Authorization header (for API clients/tests)
+    if not token and credentials is not None:
+        token = credentials.credentials
+
+    # SECURITY FIX: Authentication is always required, no exceptions
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",
             headers={"WWW-Authenticate": "Bearer"},
         )
-
-    token = credentials.credentials
 
     try:
         # Decode JWT token
@@ -82,22 +95,30 @@ async def get_current_user(
 
 
 async def get_optional_user(
+    request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False)),
 ) -> Optional[Dict[str, str]]:
     """
     Get current user if token is provided, otherwise return None.
     Useful for optional authentication on endpoints.
 
+    HIGH-003 fix: Also checks HttpOnly cookies for OAuth flow.
+
     Args:
+        request: FastAPI request object (for cookie access)
         credentials: HTTP Authorization credentials (optional)
 
     Returns:
         User information dict or None if no token provided
     """
-    if credentials is None:
+    # Check if there's any auth (cookie or header)
+    has_cookie = request.cookies.get("access_token") is not None
+    has_header = credentials is not None
+
+    if not has_cookie and not has_header:
         return None
 
     try:
-        return await get_current_user(credentials)
+        return await get_current_user(request, credentials)
     except HTTPException:
         return None
