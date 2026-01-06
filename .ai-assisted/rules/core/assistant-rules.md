@@ -45,7 +45,7 @@ Use these exact phrases as triggers:
 ```
 [LEARNED]: {new patterns or insights} → Write to LESSONS_LEARNED.md
 [FAILED_APPROACHES]: {what didn't work and why} → Add to git commit messages or code documentation
-[FUTURE_CONSIDERATION]: {potential improvements} → Document in FUTURE_CONSIDERATIONS.md
+[FUTURE_CONSIDERATION]: {potential improvements} → Document in GitHub all future proposals as GitHub issues
 ```
 
 ---
@@ -350,20 +350,23 @@ Maintain project state in the following files:
 **Application**: How to apply this going forward
 ```
 
-**`FUTURE_CONSIDERATIONS.md`** - Future improvements tracking:
+**`FUTURE_CONSIDERATIONS`** - Future improvements tracking:
+Create Github issue  with each of the suggestions that you have 
+
 ```markdown
-## [Date] Suggestion: [Title]
+## [Title]
 **Situation**: What is proposed
 **Future suggestions**: List suggestion with motivation
 ```
+Push the GitHub issue to project's Git issues 
+
 
 ### Recovery Protocol
 If you're just starting or re-starting check:
 1. Read `.ai_state` to understand current context
 2. Check recent git commits for work completed
 3. Review `PROJECT_DECISIONS.md` for recent decisions
-4. Review `LESSONS_LEARNED.md` for accumulated knowledge
-5. Review `FUTURE_CONSIDERATIONS.md` for pending improvements
+5. Review GitHub issues for pending improvements
 6. Continue from last checkpoint or request clarification
 
 ---
@@ -371,7 +374,7 @@ If you're just starting or re-starting check:
 
 ## Assistant-Agnostic Behavior
 
-- Canonical files live at repo root: `.ai_state`, `PROJECT_DECISIONS.md`, `LESSONS_LEARNED.md`, `FUTURE_CONSIDERATIONS.md`.
+- Canonical files live at repo root: `.ai_state`, `PROJECT_DECISIONS.md`,`LESSONS_LEARNED.md`
 - Encourage pinning the four canonical files in the workspace for quick access.
 - Read `.ai_state` before starting; update it after milestones, escalations, and context switches.
 - All memory protocol writes go to the three Markdown logs; avoid tool-specific state files.

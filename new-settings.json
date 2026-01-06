@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(SKIP=mypy git *)",
+      "Bash(gh *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(timeout *)",
+      "Bash(python*)",
+      "Bash(make *)",
+      "Bash(docker *)",
+      "Bash(docker-compose *)",
+      "Bash(curl *)",
+      "Bash(cat *)",
+      "Bash(tee *)",
+      "Bash(xargs *)",
+      "Bash(pkill *)",
+      "Bash(lsof *)",
+      "Read(//Users/oeftimie/work/ai/**)",
+      "Read(//private/tmp/**)",
+      "Read(//var/folders/**)"
+    ],
+    "ask": [],
+    "deny": []
+  }
+}

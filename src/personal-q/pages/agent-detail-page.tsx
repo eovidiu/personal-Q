@@ -63,6 +63,11 @@ const statusConfig = {
     label: "Error",
     className: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
   },
+  paused: {
+    label: "Paused",
+    className:
+      "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20",
+  },
 };
 
 export function AgentDetailPage() {
@@ -139,6 +144,14 @@ export function AgentDetailPage() {
   }
 
   const agentActivities = activitiesData?.activities || [];
+
+  // Format numeric values to reasonable decimal places
+  const formattedSuccessRate = typeof agent.success_rate === 'number'
+    ? agent.success_rate.toFixed(1)
+    : '0.0';
+  const formattedUptime = typeof agent.uptime === 'number'
+    ? agent.uptime.toFixed(1)
+    : '0.0';
 
   return (
     <div className="space-y-6">
@@ -226,8 +239,8 @@ export function AgentDetailPage() {
             <TrendingUpIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{agent.success_rate}%</div>
-            <Progress value={agent.success_rate} className="mt-2" />
+            <div className="text-2xl font-bold">{formattedSuccessRate}%</div>
+            <Progress value={parseFloat(formattedSuccessRate)} className="mt-2" />
           </CardContent>
         </Card>
 
@@ -237,8 +250,8 @@ export function AgentDetailPage() {
             <ActivityIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{agent.uptime}%</div>
-            <Progress value={agent.uptime} className="mt-2" />
+            <div className="text-2xl font-bold">{formattedUptime}%</div>
+            <Progress value={parseFloat(formattedUptime)} className="mt-2" />
           </CardContent>
         </Card>
 
@@ -362,25 +375,25 @@ export function AgentDetailPage() {
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm font-medium">Task Success Rate</p>
                     <p className="text-sm text-muted-foreground">
-                      {agent.success_rate}%
+                      {formattedSuccessRate}%
                     </p>
                   </div>
-                  <Progress value={agent.success_rate} />
+                  <Progress value={parseFloat(formattedSuccessRate)} />
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm font-medium">System Uptime</p>
                     <p className="text-sm text-muted-foreground">
-                      {agent.uptime}%
+                      {formattedUptime}%
                     </p>
                   </div>
-                  <Progress value={agent.uptime} />
+                  <Progress value={parseFloat(formattedUptime)} />
                 </div>
                 <div className="pt-4 border-t border-border">
                   <p className="text-sm text-muted-foreground">
                     This agent has completed{" "}
                     {agent.tasks_completed.toLocaleString()} tasks with an
-                    average success rate of {agent.success_rate}%. Performance
+                    average success rate of {formattedSuccessRate}%. Performance
                     metrics are updated in real-time.
                   </p>
                 </div>

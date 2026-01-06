@@ -69,6 +69,13 @@ export function AgentStats({
     ? ((activeAgents / totalAgents) * 100).toFixed(0)
     : '0';
 
+  // Format success rate to a reasonable number of decimal places
+  const formattedSuccessRate = typeof averageSuccessRate === 'number'
+    ? averageSuccessRate.toFixed(1)
+    : typeof averageSuccessRate === 'string'
+    ? parseFloat(averageSuccessRate).toFixed(1)
+    : '0.0';
+
   // Parse trend strings to determine if positive/negative
   const parseTrend = (trendStr?: string) => {
     if (!trendStr) return undefined;
@@ -103,7 +110,7 @@ export function AgentStats({
 
       <StatCard
         title="Avg Success Rate"
-        value={`${averageSuccessRate}%`}
+        value={`${formattedSuccessRate}%`}
         description="Overall performance"
         icon={<TrendingUpIcon className="h-4 w-4" />}
         trend={parseTrend(trends?.success_rate_change)}

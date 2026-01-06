@@ -52,6 +52,11 @@ const statusConfig = {
     label: "Error",
     className: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
   },
+  paused: {
+    label: "Paused",
+    className:
+      "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20",
+  },
 };
 
 const typeConfig: Record<string, { label: string; color: string }> = {
@@ -82,8 +87,8 @@ export function AgentCard({ agent }: AgentCardProps) {
   const safeAgent = {
     ...agent,
     tasksCompleted: agent.tasksCompleted ?? 0,
-    successRate: agent.successRate ?? 0,
-    uptime: agent.uptime ?? 0,
+    successRate: typeof agent.successRate === 'number' ? Number(agent.successRate.toFixed(1)) : 0,
+    uptime: typeof agent.uptime === 'number' ? Number(agent.uptime.toFixed(1)) : 0,
     tags: agent.tags ?? [],
     lastActive: agent.lastActive ?? 'Never',
   };

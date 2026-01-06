@@ -92,7 +92,47 @@ export function DashboardPage() {
     avg_success_rate: 0,
     trends: undefined
   };
-  const activities = activitiesData?.activities || [];
+
+  // Transform backend activities to frontend format
+  const activities = (activitiesData?.activities || []).map((activity: any) => {
+    // Find agent name
+    const agent = agents.find(a => a.id === activity.agent_id);
+    const agentName = agent?.name || "System";
+
+    // Map backend status to frontend status
+    const statusMap: Record<string, "success" | "error" | "warning"> = {
+      "SUCCESS": "success",
+      "ERROR": "error",
+      "WARNING": "warning",
+      "INFO": "success", // Map INFO to success for UI purposes
+    };
+
+    // Format timestamp
+    const formatTimestamp = (dateString: string) => {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) return "Just now";
+      if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+      if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+      return date.toLocaleDateString();
+    };
+
+    return {
+      id: activity.id,
+      agentId: activity.agent_id || "",
+      agentName,
+      action: activity.title,
+      timestamp: formatTimestamp(activity.created_at),
+      status: statusMap[activity.status] || "success",
+      details: activity.description || undefined,
+    };
+  });
 
   return (
     <div className="space-y-6">
