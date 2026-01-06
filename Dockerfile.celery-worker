@@ -51,8 +51,6 @@ USER appuser
 # Set Python path
 ENV PYTHONPATH=/app
 
-# Default to worker service type
-ENV SERVICE_TYPE=worker
-
-# Use entrypoint script
-ENTRYPOINT ["/app/entrypoint.sh"]
+# Run celery worker directly (bypasses entrypoint.sh)
+# The worker_init signal in celery_app.py will initialize the database
+CMD ["celery", "-A", "app.workers.celery_app", "worker", "--loglevel=info", "--pool=solo"]
