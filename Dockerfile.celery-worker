@@ -30,16 +30,12 @@ COPY backend/pyproject.toml backend/setup.py ./
 COPY backend/app ./app
 COPY backend/config ./config
 COPY backend/migrations ./migrations
-COPY backend/entrypoint.sh ./entrypoint.sh
 
 # Install package in editable mode with dependencies
 RUN pip install --no-cache-dir -e . --timeout 300
 
 # Create data directories
 RUN mkdir -p /app/data /app/data/lancedb
-
-# Make entrypoint executable
-RUN chmod +x /app/entrypoint.sh
 
 # Create non-root user for security
 RUN useradd -m -u 1000 appuser && \
