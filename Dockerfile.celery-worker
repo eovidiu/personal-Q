@@ -3,7 +3,7 @@
 FROM python:3.11-slim
 
 # Cache buster - change this value to force rebuild
-ARG CACHE_BUST=2026-01-07-v2
+ARG CACHE_BUST=2026-01-07-v3
 
 # Set working directory
 WORKDIR /app
