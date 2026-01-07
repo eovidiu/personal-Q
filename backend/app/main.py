@@ -17,7 +17,7 @@ from app.exceptions import (
 from app.middleware.logging_middleware import RequestLoggingMiddleware
 from app.middleware.rate_limit import limiter
 from app.middleware.security_headers import SecurityHeadersMiddleware
-from app.routers import activities, agents, auth, metrics
+from app.routers import activities, agents, auth, llm, metrics
 from app.routers import settings as settings_router
 from app.routers import tasks, websocket
 from app.services.cache_service import cache_service
@@ -382,6 +382,7 @@ app.include_router(metrics.router, prefix=f"{settings.api_prefix}/metrics", tags
 app.include_router(
     settings_router.router, prefix=f"{settings.api_prefix}/settings", tags=["settings"]
 )
+app.include_router(llm.router, prefix=f"{settings.api_prefix}/llm", tags=["llm"])
 app.include_router(websocket.router, prefix="/ws", tags=["websocket"])
 
 

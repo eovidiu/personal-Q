@@ -71,8 +71,21 @@ class Settings(BaseSettings):
     default_temperature: float = 0.7
     default_max_tokens: int = 4096
 
-    # LLM API Key (primary source - takes precedence over database)
-    personal_q_api_key: Optional[str] = None  # Anthropic API key from environment
+    # ═══════════════════════════════════════════════════════════════════════════
+    # LLM Provider API Keys
+    # SECURITY CRITICAL: API keys are ONLY read from environment variables.
+    # They are NEVER stored in the database. This is a hard requirement.
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    # Anthropic (Claude)
+    anthropic_api_key: Optional[str] = None
+    personal_q_api_key: Optional[str] = None  # Legacy fallback for Anthropic
+
+    # OpenAI (GPT)
+    openai_api_key: Optional[str] = None
+
+    # Mistral AI
+    mistral_api_key: Optional[str] = None
 
     # Logging
     log_level: str = "INFO"

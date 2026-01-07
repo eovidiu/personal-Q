@@ -8,6 +8,7 @@ import type { Task, TaskCreate } from '../types/task';
 import type { Activity } from '../types/activity';
 import type { DashboardMetrics, AgentMetrics } from '../types/metrics';
 import type { APIKey, APIKeyCreate } from '../types/settings';
+import type { ProvidersResponse } from '../types/llm';
 import { TOKEN_STORAGE_KEY, API_BASE_URL } from '@/constants/auth';
 
 class APIClient {
@@ -177,6 +178,12 @@ class APIClient {
     const response = await this.client.post('/settings/test-connection', {
       service_name: serviceName,
     });
+    return response.data;
+  }
+
+  // LLM Provider endpoints
+  async getLLMProviders(): Promise<ProvidersResponse> {
+    const response = await this.client.get('/llm/providers');
     return response.data;
   }
 }

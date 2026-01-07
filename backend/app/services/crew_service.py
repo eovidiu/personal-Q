@@ -1,14 +1,19 @@
 """
 ABOUTME: CrewAI service for multi-agent orchestration and collaboration.
-ABOUTME: Uses CrewAI native LLM with Anthropic provider.
+ABOUTME: Supports multiple LLM providers via ModelValidator and ProviderRegistry.
+ABOUTME: API keys are ONLY read from environment variables - NEVER from database.
 """
 
-from typing import Any, Dict, List, Optional
+import logging
+from typing import Any, Dict, List
 
 from app.models.agent import Agent, AgentType
-from app.services.llm_service import get_anthropic_api_key
+from app.services.model_validator import ModelValidator, model_validator
+from app.services.provider_registry import provider_registry
 from config.settings import settings
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 # Try to import CrewAI, but provide stubs if not available
 try:
@@ -28,7 +33,7 @@ except ImportError:
 
 
 class CrewService:
-    """Service for CrewAI agent orchestration."""
+    """Service for CrewAI agent orchestration with multi-provider support."""
 
     @staticmethod
     def _map_agent_type_to_role(agent_type: AgentType) -> str:
@@ -65,11 +70,59 @@ class CrewService:
         )
 
     @staticmethod
+    def _resolve_llm(
+        model_string: str, validator: ModelValidator = None
+    ) -> tuple[Any, str, Dict[str, Any]]:
+        """
+        Resolve and create an LLM instance from a model string.
+
+        SECURITY: API keys are ONLY read from environment variables.
+        They are NEVER stored in the database.
+
+        Args:
+            model_string: Model string (e.g., "anthropic/claude-3-5-sonnet-20241022" or "GPT-4")
+            validator: ModelValidator instance (optional)
+
+        Returns:
+            Tuple of (LLM instance, normalized model string, error dict or None)
+        """
+        validator = validator or model_validator
+
+        # Validate and normalize the model string
+        validation = validator.validate_model(model_string, check_configured=True)
+
+        if not validation.is_valid:
+            return None, None, {"error": validation.error}
+
+        # Get API key from environment (NEVER from database)
+        api_key = provider_registry.get_api_key(validation.provider)
+
+        if not api_key:
+            provider_config = provider_registry.get_provider(validation.provider)
+            env_var = provider_config.api_key_env if provider_config else "API_KEY"
+            return None, None, {
+                "error": f"API key not configured for provider '{validation.provider}'. "
+                f"Set {env_var} environment variable."
+            }
+
+        logger.info(
+            f"Creating LLM for provider '{validation.provider}' "
+            f"with model '{validation.model}'"
+        )
+
+        return validation.normalized, api_key, None
+
+    @staticmethod
     async def execute_agent_task(
-        db: AsyncSession, agent: Agent, task_description: str, task_input: Dict[str, Any] = None
+        db: AsyncSession,
+        agent: Agent,
+        task_description: str,
+        task_input: Dict[str, Any] = None,
     ) -> Dict[str, Any]:
         """
         Execute a task with a single agent.
+
+        Supports multiple LLM providers (Anthropic, OpenAI, Mistral).
 
         Args:
             db: Database session
@@ -88,25 +141,21 @@ class CrewService:
                 "task_description": task_description,
             }
 
-        # Get API key from environment variable
-        try:
-            api_key = get_anthropic_api_key()
-        except ValueError as e:
+        # Resolve model and get API key (from environment only)
+        model_string = agent.model or settings.default_model
+        normalized_model, api_key, error = CrewService._resolve_llm(model_string)
+
+        if error:
             return {
                 "success": False,
-                "error": str(e),
+                "error": error["error"],
                 "agent_id": agent.id,
                 "task_description": task_description,
             }
 
-        # Configure LLM using CrewAI native LLM with anthropic/ prefix
-        model_name = agent.model or settings.default_model
-        # Ensure model has anthropic/ prefix for proper routing
-        if not model_name.startswith("anthropic/"):
-            model_name = f"anthropic/{model_name}"
-
+        # Create LLM instance
         llm = LLM(
-            model=model_name,
+            model=normalized_model,
             api_key=api_key,
             temperature=agent.temperature or settings.default_temperature,
             max_tokens=agent.max_tokens or settings.default_max_tokens,
@@ -133,6 +182,9 @@ class CrewService:
 
         # Execute
         try:
+            logger.info(
+                f"Executing task for agent '{agent.name}' with model '{normalized_model}'"
+            )
             result = crew.kickoff()
 
             return {
@@ -140,9 +192,11 @@ class CrewService:
                 "result": str(result),
                 "agent_id": agent.id,
                 "task_description": task_description,
+                "model_used": normalized_model,
             }
 
         except Exception as e:
+            logger.error(f"Task execution failed: {e}", exc_info=True)
             return {
                 "success": False,
                 "error": str(e),
@@ -159,6 +213,8 @@ class CrewService:
     ) -> Dict[str, Any]:
         """
         Execute tasks with multiple agents collaborating.
+
+        Supports multiple LLM providers (Anthropic, OpenAI, Mistral).
 
         Args:
             db: Database session
@@ -179,25 +235,21 @@ class CrewService:
         if len(agents) != len(task_descriptions):
             raise ValueError("Number of agents must match number of tasks")
 
-        # Get API key from environment variable
-        try:
-            api_key = get_anthropic_api_key()
-        except ValueError as e:
+        # Use first agent's model as default for multi-agent crew
+        primary_agent = agents[0]
+        model_string = primary_agent.model or settings.default_model
+        normalized_model, api_key, error = CrewService._resolve_llm(model_string)
+
+        if error:
             return {
                 "success": False,
-                "error": str(e),
+                "error": error["error"],
                 "agents": [{"id": a.id, "name": a.name} for a in agents],
             }
 
-        # Use first agent's config as default for multi-agent crew
-        primary_agent = agents[0]
-        model_name = primary_agent.model or settings.default_model
-        # Ensure model has anthropic/ prefix for proper routing
-        if not model_name.startswith("anthropic/"):
-            model_name = f"anthropic/{model_name}"
-
+        # Create shared LLM instance
         llm = LLM(
-            model=model_name,
+            model=normalized_model,
             api_key=api_key,
             temperature=primary_agent.temperature or settings.default_temperature,
             max_tokens=primary_agent.max_tokens or settings.default_max_tokens,
@@ -209,13 +261,17 @@ class CrewService:
         # Create tasks
         crew_tasks = [
             CrewTask(
-                description=task_desc, agent=crew_agents[i], expected_output="Detailed task result"
+                description=task_desc,
+                agent=crew_agents[i],
+                expected_output="Detailed task result",
             )
             for i, task_desc in enumerate(task_descriptions)
         ]
 
         # Determine process type
-        process_type = Process.hierarchical if process == "hierarchical" else Process.sequential
+        process_type = (
+            Process.hierarchical if process == "hierarchical" else Process.sequential
+        )
 
         # Create crew (memory disabled to avoid OpenAI embeddings requirement)
         crew = Crew(
@@ -228,6 +284,10 @@ class CrewService:
 
         # Execute
         try:
+            logger.info(
+                f"Executing multi-agent task with {len(agents)} agents, "
+                f"model '{normalized_model}', process '{process}'"
+            )
             result = crew.kickoff()
 
             return {
@@ -235,9 +295,11 @@ class CrewService:
                 "result": str(result),
                 "agents": [{"id": a.id, "name": a.name} for a in agents],
                 "process": process,
+                "model_used": normalized_model,
             }
 
         except Exception as e:
+            logger.error(f"Multi-agent task execution failed: {e}", exc_info=True)
             return {
                 "success": False,
                 "error": str(e),
