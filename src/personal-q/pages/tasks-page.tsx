@@ -61,12 +61,12 @@ export function TasksPage() {
   };
 
   // Filter tasks by search query (client-side filtering)
-  const filteredTasks = tasksData?.tasks.filter((task) => {
+  const filteredTasks = (tasksData?.tasks ?? []).filter((task) => {
     const matchesSearch =
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       task.description?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
-  }) || [];
+  });
 
   // Loading state
   if (isLoading) {
@@ -127,7 +127,7 @@ export function TasksPage() {
                     <SelectValue placeholder="Select an agent" />
                   </SelectTrigger>
                   <SelectContent>
-                    {agentsData?.agents.map((agent) => (
+                    {(agentsData?.agents ?? []).map((agent) => (
                       <SelectItem key={agent.id} value={agent.id}>
                         {agent.name}
                       </SelectItem>
