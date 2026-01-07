@@ -1,6 +1,6 @@
 """
 ABOUTME: CrewAI service for multi-agent orchestration and collaboration.
-ABOUTME: Uses LangChain-compatible ChatAnthropic for proper integration.
+ABOUTME: Uses CrewAI native LLM with Anthropic provider.
 """
 
 from typing import Any, Dict, List, Optional
@@ -13,9 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # Try to import CrewAI, but provide stubs if not available
 try:
     from crewai import Agent as CrewAgent
-    from crewai import Crew, Process
+    from crewai import Crew, LLM, Process
     from crewai import Task as CrewTask
-    from langchain_anthropic import ChatAnthropic
 
     CREWAI_AVAILABLE = True
 except ImportError:
@@ -25,7 +24,7 @@ except ImportError:
     CrewTask = None
     Crew = None
     Process = None
-    ChatAnthropic = None
+    LLM = None
 
 
 class CrewService:
@@ -100,13 +99,17 @@ class CrewService:
                 "task_description": task_description,
             }
 
-        # Configure LLM for agent using LangChain-compatible ChatAnthropic
-        llm = ChatAnthropic(
-            model=agent.model or settings.default_model,
-            anthropic_api_key=api_key,
+        # Configure LLM using CrewAI native LLM with anthropic/ prefix
+        model_name = agent.model or settings.default_model
+        # Ensure model has anthropic/ prefix for proper routing
+        if not model_name.startswith("anthropic/"):
+            model_name = f"anthropic/{model_name}"
+
+        llm = LLM(
+            model=model_name,
+            api_key=api_key,
             temperature=agent.temperature or settings.default_temperature,
             max_tokens=agent.max_tokens or settings.default_max_tokens,
-            streaming=True,  # Enable streaming for real-time responses
         )
 
         # Create CrewAI agent
@@ -119,9 +122,13 @@ class CrewService:
             expected_output="Detailed result of the task execution",
         )
 
-        # Create crew with single agent
+        # Create crew with single agent (memory disabled to avoid OpenAI embeddings)
         crew = Crew(
-            agents=[crew_agent], tasks=[crew_task], process=Process.sequential, verbose=True
+            agents=[crew_agent],
+            tasks=[crew_task],
+            process=Process.sequential,
+            verbose=True,
+            memory=False,  # Disable memory to avoid OpenAI embeddings requirement
         )
 
         # Execute
@@ -184,12 +191,16 @@ class CrewService:
 
         # Use first agent's config as default for multi-agent crew
         primary_agent = agents[0]
-        llm = ChatAnthropic(
-            model=primary_agent.model or settings.default_model,
-            anthropic_api_key=api_key,
+        model_name = primary_agent.model or settings.default_model
+        # Ensure model has anthropic/ prefix for proper routing
+        if not model_name.startswith("anthropic/"):
+            model_name = f"anthropic/{model_name}"
+
+        llm = LLM(
+            model=model_name,
+            api_key=api_key,
             temperature=primary_agent.temperature or settings.default_temperature,
             max_tokens=primary_agent.max_tokens or settings.default_max_tokens,
-            streaming=True,
         )
 
         # Create CrewAI agents
@@ -206,8 +217,14 @@ class CrewService:
         # Determine process type
         process_type = Process.hierarchical if process == "hierarchical" else Process.sequential
 
-        # Create crew
-        crew = Crew(agents=crew_agents, tasks=crew_tasks, process=process_type, verbose=True)
+        # Create crew (memory disabled to avoid OpenAI embeddings requirement)
+        crew = Crew(
+            agents=crew_agents,
+            tasks=crew_tasks,
+            process=process_type,
+            verbose=True,
+            memory=False,
+        )
 
         # Execute
         try:
