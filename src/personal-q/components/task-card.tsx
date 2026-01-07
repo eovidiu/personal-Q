@@ -12,9 +12,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CheckCircle2Icon, ClockIcon, XCircleIcon, PlayCircleIcon, Loader2Icon, BanIcon, XIcon } from "lucide-react";
+import { CheckCircle2Icon, ClockIcon, XCircleIcon, PlayCircleIcon, Loader2Icon, BanIcon, XIcon, RefreshCwIcon } from "lucide-react";
 import { TaskDetailModal } from "./task-detail-modal";
 import { useCancelTask } from "@/hooks/useCancelTask";
+import { useRetryTask } from "@/hooks/useRetryTask";
 import type { Task } from "@/types/task";
 
 interface TaskCardProps {
@@ -72,6 +73,7 @@ export function TaskCard({ task }: TaskCardProps) {
   const [showDetail, setShowDetail] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const cancelTaskMutation = useCancelTask();
+  const retryTaskMutation = useRetryTask();
 
   // Defensive fallbacks for unexpected status/priority values
   const statusInfo = statusConfig[task.status] || statusConfig.pending;
@@ -79,10 +81,16 @@ export function TaskCard({ task }: TaskCardProps) {
   const StatusIcon = statusInfo.icon;
 
   const canCancel = task.status === 'pending' || task.status === 'running';
+  const canRetry = task.status === 'pending' || task.status === 'failed';
 
   const handleCancelClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click from opening detail modal
     setShowCancelDialog(true);
+  };
+
+  const handleRetryClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click from opening detail modal
+    retryTaskMutation.mutate(task.id);
   };
 
   const handleConfirmCancel = async () => {
@@ -107,18 +115,34 @@ export function TaskCard({ task }: TaskCardProps) {
               <CardDescription className="line-clamp-2">{task.description}</CardDescription>
             )}
           </div>
-          {canCancel && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleCancelClick}
-              disabled={cancelTaskMutation.isPending}
-              className="ml-2 flex-shrink-0"
-              title="Cancel task"
-            >
-              <XIcon className="h-4 w-4" />
-            </Button>
-          )}
+          <div className="flex gap-1 ml-2 flex-shrink-0">
+            {canRetry && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleRetryClick}
+                disabled={retryTaskMutation.isPending}
+                title="Retry task"
+              >
+                {retryTaskMutation.isPending ? (
+                  <Loader2Icon className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCwIcon className="h-4 w-4" />
+                )}
+              </Button>
+            )}
+            {canCancel && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleCancelClick}
+                disabled={cancelTaskMutation.isPending}
+                title="Cancel task"
+              >
+                <XIcon className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
 

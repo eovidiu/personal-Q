@@ -125,6 +125,11 @@ class APIClient {
     return response.data;
   }
 
+  async retryTask(id: string): Promise<Task> {
+    const response = await this.client.post(`/tasks/${id}/retry`);
+    return response.data;
+  }
+
   // Activity endpoints
   async getActivities(params?: {
     page?: number;
