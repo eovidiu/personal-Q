@@ -221,3 +221,44 @@ async def cancel_task(
     )
 
     return task
+
+
+@router.post("/{task_id}/retry", response_model=Task)
+@limiter.limit(get_rate_limit("task_operations"))
+async def retry_task(
+    request: Request,
+    task_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: Dict = Depends(get_current_user),
+):
+    """
+    Retry a pending or failed task by re-queuing it for execution.
+    """
+    result = await db.execute(
+        select(TaskModel).where(TaskModel.id == task_id)
+    )
+    task = result.scalar_one_or_none()
+
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    if task.status not in [TaskStatus.PENDING, TaskStatus.FAILED]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Can only retry pending or failed tasks, current status: {task.status.value}",
+        )
+
+    # Reset task status to pending
+    task.status = TaskStatus.PENDING
+    task.error_message = None
+    task.started_at = None
+    task.completed_at = None
+    task.execution_time_seconds = None
+    task.retry_count += 1
+    await db.commit()
+    await db.refresh(task)
+
+    # Re-queue for execution
+    execute_agent_task.delay(task.id)
+
+    return task
