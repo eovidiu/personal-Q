@@ -154,7 +154,7 @@ export function TaskCard({ task }: TaskCardProps) {
               </p>
             </div>
           )}
-          {task.execution_time_seconds !== undefined && (
+          {task.execution_time_seconds != null && (
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Duration</p>
               <p className="text-sm font-medium">{task.execution_time_seconds.toFixed(2)}s</p>
