@@ -11,7 +11,7 @@ from app.models.agent import Agent
 from app.models.task import Task as TaskModel
 from app.models.task import TaskStatus
 from app.services.crew_service import CrewService
-from app.utils.datetime_utils import utcnow
+from app.utils.datetime_utils import utcnow_naive
 from app.workers.celery_app import celery_app
 from celery import Task
 from config.settings import settings
@@ -59,7 +59,7 @@ async def execute_agent_task(self, task_id: str):
 
         # Update task status
         task.status = TaskStatus.RUNNING
-        task.started_at = utcnow()
+        task.started_at = utcnow_naive()
         task.celery_task_id = self.request.id
         await db.commit()
 
@@ -86,14 +86,14 @@ async def execute_agent_task(self, task_id: str):
             # Update task with result
             task.status = TaskStatus.COMPLETED if result["success"] else TaskStatus.FAILED
             task.output_data = result
-            task.completed_at = utcnow()
+            task.completed_at = utcnow_naive()
 
             if not result["success"]:
                 task.error_message = result.get("error", "Unknown error")
 
             # Calculate execution time
             if task.started_at:
-                execution_time = (utcnow() - task.started_at).total_seconds()
+                execution_time = (utcnow_naive() - task.started_at).total_seconds()
                 task.execution_time_seconds = int(execution_time)
 
             # Update agent metrics
@@ -102,7 +102,7 @@ async def execute_agent_task(self, task_id: str):
             else:
                 agent.tasks_failed += 1
 
-            agent.last_active = utcnow()
+            agent.last_active = utcnow_naive()
 
             await db.commit()
 
@@ -138,7 +138,7 @@ async def execute_agent_task(self, task_id: str):
             # Handle execution error
             task.status = TaskStatus.FAILED
             task.error_message = str(e)
-            task.completed_at = utcnow()
+            task.completed_at = utcnow_naive()
             agent.tasks_failed += 1
             await db.commit()
 
@@ -179,7 +179,7 @@ def cleanup_old_data():
     async def _cleanup():
         async with AsyncSessionLocal() as db:
             # Calculate cutoff date
-            cutoff_date = utcnow() - timedelta(days=settings.memory_retention_days)
+            cutoff_date = utcnow_naive() - timedelta(days=settings.memory_retention_days)
 
             # Delete old activities
             stmt = delete(Activity).where(Activity.created_at < cutoff_date)
@@ -208,7 +208,7 @@ def update_metrics():
             for agent in agents:
                 # Calculate success rate (already a property, but we could add more metrics)
                 # Future: Add uptime calculation, response time averages, etc.
-                agent.updated_at = utcnow()
+                agent.updated_at = utcnow_naive()
                 updated_count += 1
 
             await db.commit()
@@ -252,7 +252,7 @@ def execute_scheduled_task(self, schedule_id: str):
             await db.commit()
 
             # Update schedule last_run
-            schedule.last_run = utcnow()
+            schedule.last_run = utcnow_naive()
             await db.commit()
 
             # Execute task asynchronously
