@@ -198,7 +198,7 @@ class ProviderRegistry:
                 display_name="OpenAI (GPT)",
                 prefix="openai/",
                 api_key_env="OPENAI_API_KEY",
-                fallback_env=None,
+                fallback_env="PERSONAL_Q_OPENAI_API_KEY",
                 models=[
                     # GPT-4o Series (Latest)
                     ModelInfo(
@@ -306,7 +306,7 @@ class ProviderRegistry:
                 display_name="Mistral AI",
                 prefix="mistral/",
                 api_key_env="MISTRAL_API_KEY",
-                fallback_env=None,
+                fallback_env="PERSONAL_Q_MISTRAL_API_KEY",
                 models=[
                     # Large Models
                     ModelInfo(
