@@ -63,9 +63,11 @@ export default function AIAgentApp() {
               path="/tasks"
               element={
                 <ProtectedRoute>
-                  <DashboardLayout>
-                    <TasksPage />
-                  </DashboardLayout>
+                  <ErrorBoundary>
+                    <DashboardLayout>
+                      <TasksPage />
+                    </DashboardLayout>
+                  </ErrorBoundary>
                 </ProtectedRoute>
               }
             />

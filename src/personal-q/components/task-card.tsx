@@ -72,7 +72,11 @@ export function TaskCard({ task }: TaskCardProps) {
   const [showDetail, setShowDetail] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const cancelTaskMutation = useCancelTask();
-  const StatusIcon = statusConfig[task.status].icon;
+
+  // Defensive fallbacks for unexpected status/priority values
+  const statusInfo = statusConfig[task.status] || statusConfig.pending;
+  const priorityInfo = priorityConfig[task.priority] || priorityConfig.medium;
+  const StatusIcon = statusInfo.icon;
 
   const canCancel = task.status === 'pending' || task.status === 'running';
 
@@ -120,11 +124,11 @@ export function TaskCard({ task }: TaskCardProps) {
 
       <CardContent className="space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="outline" className={statusConfig[task.status].className}>
-            {statusConfig[task.status].label}
+          <Badge variant="outline" className={statusInfo.className}>
+            {statusInfo.label}
           </Badge>
-          <Badge variant="secondary" className={priorityConfig[task.priority].className}>
-            {priorityConfig[task.priority].label}
+          <Badge variant="secondary" className={priorityInfo.className}>
+            {priorityInfo.label}
           </Badge>
         </div>
 
