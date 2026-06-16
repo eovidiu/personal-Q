@@ -150,24 +150,32 @@ class AgentRuntime:
             return None, None, {"error": validation.error}
 
         if validation.provider != "anthropic":
-            return None, None, {
-                "error": (
-                    f"Provider '{validation.provider}' is not supported by the Claude "
-                    f"agent runtime. Configure an Anthropic model (e.g. "
-                    f"'anthropic/claude-opus-4-8')."
-                )
-            }
+            return (
+                None,
+                None,
+                {
+                    "error": (
+                        f"Provider '{validation.provider}' is not supported by the Claude "
+                        f"agent runtime. Configure an Anthropic model (e.g. "
+                        f"'anthropic/claude-opus-4-8')."
+                    )
+                },
+            )
 
         api_key = provider_registry.get_api_key("anthropic")
         if not api_key:
             provider_config = provider_registry.get_provider("anthropic")
             env_var = provider_config.api_key_env if provider_config else "ANTHROPIC_API_KEY"
-            return None, None, {
-                "error": (
-                    f"API key not configured for provider 'anthropic'. "
-                    f"Set {env_var} (or PERSONAL_Q_API_KEY) environment variable."
-                )
-            }
+            return (
+                None,
+                None,
+                {
+                    "error": (
+                        f"API key not configured for provider 'anthropic'. "
+                        f"Set {env_var} (or PERSONAL_Q_API_KEY) environment variable."
+                    )
+                },
+            )
 
         # validation.model is the bare model id (no provider prefix), which is
         # exactly what the Anthropic Messages API expects.
@@ -190,9 +198,7 @@ class AgentRuntime:
     # ------------------------------------------------------------------ #
     @staticmethod
     @retry(
-        retry=retry_if_exception_type(
-            (APIConnectionError, RateLimitError, httpx.TimeoutException)
-        ),
+        retry=retry_if_exception_type((APIConnectionError, RateLimitError, httpx.TimeoutException)),
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=10),
         before_sleep=before_sleep_log(logger, logging.WARNING),
@@ -238,9 +244,7 @@ class AgentRuntime:
 
         Returns a dict with the final text, token usage, and iteration count.
         """
-        messages: List[Dict[str, Any]] = [
-            {"role": "user", "content": initial_user_content}
-        ]
+        messages: List[Dict[str, Any]] = [{"role": "user", "content": initial_user_content}]
         total_input = 0
         total_output = 0
 
@@ -362,9 +366,7 @@ class AgentRuntime:
         system = AgentRuntime._build_system_prompt(agent)
         tools = AgentRuntime.build_tools(agent)
         temperature = (
-            agent.temperature
-            if agent.temperature is not None
-            else settings.default_temperature
+            agent.temperature if agent.temperature is not None else settings.default_temperature
         )
         max_tokens = agent.max_tokens or settings.default_max_tokens
 
@@ -397,9 +399,12 @@ class AgentRuntime:
 
         if loop_result.get("error"):
             return AgentRuntime._error_result(
-                agent, task_description, loop_result["error"], extra={
+                agent,
+                task_description,
+                loop_result["error"],
+                extra={
                     "iterations": loop_result.get("iterations"),
-                }
+                },
             )
 
         return {
@@ -493,9 +498,7 @@ class AgentRuntime:
     # Small helpers
     # ------------------------------------------------------------------ #
     @staticmethod
-    def _compose_task_prompt(
-        task_description: str, task_input: Optional[Dict[str, Any]]
-    ) -> str:
+    def _compose_task_prompt(task_description: str, task_input: Optional[Dict[str, Any]]) -> str:
         """Sanitize and assemble the user prompt from the task and optional input."""
         safe_task = PromptSanitizer.sanitize_prompt(task_description, raise_on_detection=True)
         if task_input:

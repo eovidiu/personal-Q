@@ -188,9 +188,7 @@ class ModelValidator:
         # Step 4: Validate provider exists
         provider_config = self.registry.get_provider(provider)
         if not provider_config:
-            available_providers = ", ".join(
-                p.name for p in self.registry.list_providers()
-            )
+            available_providers = ", ".join(p.name for p in self.registry.list_providers())
             return ValidationResult(
                 is_valid=False,
                 provider=provider,
