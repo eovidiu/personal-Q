@@ -33,9 +33,9 @@ async def test_task_started_broadcast(db_session, sample_agent):
 
     # Mock the broadcast_event function
     with patch("app.routers.websocket.broadcast_event", new_callable=AsyncMock) as mock_broadcast:
-        # Mock CrewService to prevent actual execution
+        # Mock AgentRuntime to prevent actual execution
         with patch(
-            "app.workers.tasks.CrewService.execute_agent_task", new_callable=AsyncMock
+            "app.workers.tasks.AgentRuntime.execute_agent_task", new_callable=AsyncMock
         ) as mock_crew:
             mock_crew.return_value = {"success": True, "output": "Test output"}
 
@@ -81,9 +81,9 @@ async def test_task_completed_broadcast(db_session, sample_agent):
 
     # Mock the broadcast_event function
     with patch("app.routers.websocket.broadcast_event", new_callable=AsyncMock) as mock_broadcast:
-        # Mock CrewService to return success
+        # Mock AgentRuntime to return success
         with patch(
-            "app.workers.tasks.CrewService.execute_agent_task", new_callable=AsyncMock
+            "app.workers.tasks.AgentRuntime.execute_agent_task", new_callable=AsyncMock
         ) as mock_crew:
             mock_crew.return_value = {"success": True, "output": "Completed successfully"}
 
@@ -128,9 +128,9 @@ async def test_task_failed_broadcast_on_error(db_session, sample_agent):
 
     # Mock the broadcast_event function
     with patch("app.routers.websocket.broadcast_event", new_callable=AsyncMock) as mock_broadcast:
-        # Mock CrewService to return failure
+        # Mock AgentRuntime to return failure
         with patch(
-            "app.workers.tasks.CrewService.execute_agent_task", new_callable=AsyncMock
+            "app.workers.tasks.AgentRuntime.execute_agent_task", new_callable=AsyncMock
         ) as mock_crew:
             mock_crew.return_value = {"success": False, "error": "Execution failed"}
 
@@ -174,9 +174,9 @@ async def test_task_failed_broadcast_on_exception(db_session, sample_agent):
 
     # Mock the broadcast_event function
     with patch("app.routers.websocket.broadcast_event", new_callable=AsyncMock) as mock_broadcast:
-        # Mock CrewService to raise exception
+        # Mock AgentRuntime to raise exception
         with patch(
-            "app.workers.tasks.CrewService.execute_agent_task", new_callable=AsyncMock
+            "app.workers.tasks.AgentRuntime.execute_agent_task", new_callable=AsyncMock
         ) as mock_crew:
             mock_crew.side_effect = Exception("Unexpected error")
 

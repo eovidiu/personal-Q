@@ -10,7 +10,7 @@ from app.models.activity import Activity
 from app.models.agent import Agent
 from app.models.task import Task as TaskModel
 from app.models.task import TaskStatus
-from app.services.crew_service import CrewService
+from app.services.agent_runtime import AgentRuntime
 from app.utils.datetime_utils import utcnow_naive
 from app.workers.celery_app import celery_app
 from celery import Task
@@ -78,8 +78,8 @@ async def execute_agent_task(self, task_id: str):
         )
 
         try:
-            # Execute with CrewAI
-            result = await CrewService.execute_agent_task(
+            # Execute with the Claude agent runtime (Anthropic SDK tool-use loop)
+            result = await AgentRuntime.execute_agent_task(
                 db, agent, task.description or task.title, task.input_data
             )
 

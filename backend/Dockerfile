@@ -36,7 +36,6 @@ COPY backend/migrations ./migrations
 COPY backend/entrypoint.sh ./entrypoint.sh
 
 # Install package in editable mode with dependencies
-# Increased timeout for CrewAI dependency resolution
 RUN pip install --no-cache-dir -e . --timeout 300
 
 # Create data directories

@@ -1,6 +1,6 @@
 # Personal-Q AI Agent Management System
 
-A comprehensive, locally-run AI agent management platform with CrewAI orchestration, Claude integration, and real-time monitoring.
+A comprehensive, locally-run AI agent management platform with a Claude agent runtime (Anthropic SDK tool-use loop), Claude integration, and real-time monitoring.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
@@ -10,7 +10,7 @@ A comprehensive, locally-run AI agent management platform with CrewAI orchestrat
 ## Features
 
 ### Core Capabilities
-- **Multi-Agent Orchestration**: CrewAI-powered agent collaboration with sequential and hierarchical workflows
+- **Multi-Agent Orchestration**: Claude agent runtime with sequential and hierarchical workflows (Anthropic SDK tool-use loop)
 - **LLM Integration**: Claude (Anthropic) integration with streaming support
 - **Task Management**: Async task queue with Celery + Redis for background processing
 - **Memory & Context**: ChromaDB-based vector storage for semantic search and RAG
@@ -80,8 +80,8 @@ See [Installation Guide](docs/INSTALLATION.md) for detailed setup instructions.
 │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘      │
 │         │                  │                  │              │
 │  ┌──────┴──────────────────┴──────────────────┴───────┐    │
-│  │              CrewAI Orchestration                    │    │
-│  │        (Multi-Agent Task Execution)                  │    │
+│  │           Claude Agent Runtime                       │    │
+│  │   (Anthropic SDK tool-use loop · multi-agent)        │    │
 │  └──────────────────────┬───────────────────────────────┘    │
 │                         │                                     │
 │  ┌──────────────────────┴───────────────────────────────┐   │
@@ -117,7 +117,7 @@ See [Installation Guide](docs/INSTALLATION.md) for detailed setup instructions.
 - SQLAlchemy (async ORM)
 - Alembic (migrations)
 - Celery + Redis (task queue)
-- CrewAI (agent orchestration)
+- Anthropic SDK (Claude agent runtime — tool-use loop)
 
 **Databases**
 - SQLite (structured data)
@@ -213,7 +213,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## Acknowledgments
 
 - Built with [Claude Code](https://claude.com/claude-code)
-- Powered by [CrewAI](https://github.com/joaomdmoura/crewAI)
+- Powered by the [Anthropic SDK](https://github.com/anthropics/anthropic-sdk-python) (Claude agent runtime)
 - UI components from [shadcn/ui](https://ui.shadcn.com/)
 - LLM by [Anthropic Claude](https://www.anthropic.com/)
 

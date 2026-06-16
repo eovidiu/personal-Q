@@ -12,13 +12,10 @@ aiosqlite==0.20.0
 # ChromaDB for vector storage
 chromadb==0.5.18
 
-# LLM Integration
-anthropic==0.39.0
-
-# CrewAI - Multi-agent orchestration
-crewai==0.203.1
-langchain-anthropic==0.3.0  # Required for ChatAnthropic integration
-langchain-core==0.3.0  # Core LangChain components
+# LLM Integration / Agent runtime
+# The Claude agent runtime uses the Anthropic SDK directly (Messages API +
+# tool-use loop). No CrewAI / LangChain / LiteLLM required.
+anthropic>=0.39.0
 
 # Task Queue
 celery==5.4.0

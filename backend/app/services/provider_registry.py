@@ -93,7 +93,52 @@ class ProviderRegistry:
                 api_key_env="ANTHROPIC_API_KEY",
                 fallback_env="PERSONAL_Q_API_KEY",
                 models=[
-                    # Claude 4 Series (Latest)
+                    # Claude 4.6+ / Fable (current — tool-use agent runtime)
+                    ModelInfo(
+                        id="claude-opus-4-8",
+                        display_name="Claude Opus 4.8",
+                        context_window=1000000,
+                        max_output_tokens=128000,
+                        supports_vision=True,
+                        supports_tools=True,
+                        cost_per_1k_input=0.005,
+                        cost_per_1k_output=0.025,
+                        is_recommended=True,
+                    ),
+                    ModelInfo(
+                        id="claude-sonnet-4-6",
+                        display_name="Claude Sonnet 4.6",
+                        context_window=1000000,
+                        max_output_tokens=64000,
+                        supports_vision=True,
+                        supports_tools=True,
+                        cost_per_1k_input=0.003,
+                        cost_per_1k_output=0.015,
+                        is_recommended=False,
+                    ),
+                    ModelInfo(
+                        id="claude-haiku-4-5",
+                        display_name="Claude Haiku 4.5",
+                        context_window=200000,
+                        max_output_tokens=64000,
+                        supports_vision=True,
+                        supports_tools=True,
+                        cost_per_1k_input=0.001,
+                        cost_per_1k_output=0.005,
+                        is_recommended=False,
+                    ),
+                    ModelInfo(
+                        id="claude-fable-5",
+                        display_name="Claude Fable 5",
+                        context_window=1000000,
+                        max_output_tokens=128000,
+                        supports_vision=True,
+                        supports_tools=True,
+                        cost_per_1k_input=0.010,
+                        cost_per_1k_output=0.050,
+                        is_recommended=False,
+                    ),
+                    # Claude 4 Series (legacy — accept sampling params)
                     ModelInfo(
                         id="claude-sonnet-4-20250514",
                         display_name="Claude Sonnet 4",
@@ -103,7 +148,7 @@ class ProviderRegistry:
                         supports_tools=True,
                         cost_per_1k_input=0.003,
                         cost_per_1k_output=0.015,
-                        is_recommended=True,
+                        is_recommended=False,
                     ),
                     ModelInfo(
                         id="claude-opus-4-20250514",
