@@ -79,10 +79,7 @@ async def get_agent_metrics(
 
     # Issue #114 fix: Use proper HTTP status code for not found
     if not agent:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Agent not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
 
     # Get task breakdown
     pending_result = await db.execute(

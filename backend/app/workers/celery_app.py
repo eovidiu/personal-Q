@@ -17,10 +17,15 @@ def _init_database_sync():
     Called at module load time to ensure tables exist before any tasks run.
     """
     try:
-        from app.db.database import Base
-        from app.models import Agent, Task, Activity, APIKey, Schedule  # noqa: F401 - Import to register models
-
         import sqlalchemy
+        from app.db.database import Base
+        from app.models import (  # noqa: F401 - Import to register models
+            Activity,
+            Agent,
+            APIKey,
+            Schedule,
+            Task,
+        )
 
         # Determine sync URL based on database type
         db_url = settings.database_url

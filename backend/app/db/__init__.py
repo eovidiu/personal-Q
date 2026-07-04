@@ -14,6 +14,6 @@ __all__ = [
     "EncryptedString",
 ]
 
-from .lance_client import LanceDBClient, get_lance_client
 from .database import AsyncSessionLocal, Base, close_db, engine, get_db, init_db
 from .encrypted_types import EncryptedString
+from .lance_client import LanceDBClient, get_lance_client

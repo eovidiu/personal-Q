@@ -129,9 +129,7 @@ def verify_access_token(token: str) -> Optional[dict]:
 
         # Verify email is in the allowed list
         if not settings.is_email_allowed(payload.get("email", "")):
-            logger.warning(
-                f"Token email not in allowed list: {payload.get('email')}"
-            )
+            logger.warning(f"Token email not in allowed list: {payload.get('email')}")
             return None
 
         return payload
@@ -166,10 +164,12 @@ async def login(request: Request):
     # Store state in Redis with TTL (HIGH-001 fix: Redis instead of in-memory)
     try:
         redis_client = get_redis_client()
-        state_data = json.dumps({
-            "created_at": utcnow().isoformat(),
-            "redirect_uri": str(request.url_for("auth_callback"))
-        })
+        state_data = json.dumps(
+            {
+                "created_at": utcnow().isoformat(),
+                "redirect_uri": str(request.url_for("auth_callback")),
+            }
+        )
         redis_client.setex(f"{OAUTH_STATE_PREFIX}{state}", OAUTH_STATE_TTL, state_data)
         logger.info(f"Generated OAuth state token: {state[:8]}... (stored in Redis)")
     except redis.RedisError as e:
@@ -326,8 +326,7 @@ async def logout(request: Request):
         if not csrf_header or csrf_cookie != csrf_header:
             logger.warning("Logout CSRF validation failed")
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="CSRF validation failed"
+                status_code=status.HTTP_403_FORBIDDEN, detail="CSRF validation failed"
             )
 
     # Verify session exists (cookie must be present for logout)

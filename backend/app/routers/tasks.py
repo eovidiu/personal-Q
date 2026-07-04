@@ -234,9 +234,7 @@ async def retry_task(
     """
     Retry a pending or failed task by re-queuing it for execution.
     """
-    result = await db.execute(
-        select(TaskModel).where(TaskModel.id == task_id)
-    )
+    result = await db.execute(select(TaskModel).where(TaskModel.id == task_id))
     task = result.scalar_one_or_none()
 
     if not task:

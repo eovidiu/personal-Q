@@ -137,12 +137,13 @@ async def websocket_endpoint(websocket: WebSocket):
         # Prevents resource exhaustion from clients that connect but never authenticate
         try:
             auth_data = await asyncio.wait_for(
-                websocket.receive_text(),
-                timeout=AUTH_TIMEOUT_SECONDS
+                websocket.receive_text(), timeout=AUTH_TIMEOUT_SECONDS
             )
         except asyncio.TimeoutError:
             logger.warning("WebSocket: Authentication timeout - closing connection")
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication timeout")
+            await websocket.close(
+                code=status.WS_1008_POLICY_VIOLATION, reason="Authentication timeout"
+            )
             return
 
         # Validate message size
@@ -157,14 +158,22 @@ async def websocket_endpoint(websocket: WebSocket):
         except json.JSONDecodeError:
             logger.warning("WebSocket: Invalid JSON in authentication message")
             await websocket.send_json({"error": "Invalid JSON"})
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid authentication format")
+            await websocket.close(
+                code=status.WS_1008_POLICY_VIOLATION, reason="Invalid authentication format"
+            )
             return
 
         # Verify this is an authentication message
         if auth_message.get("action") != "authenticate":
-            logger.warning(f"WebSocket: First message must be authentication, got: {auth_message.get('action')}")
-            await websocket.send_json({"error": "First message must be authentication", "expected_action": "authenticate"})
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication required")
+            logger.warning(
+                f"WebSocket: First message must be authentication, got: {auth_message.get('action')}"
+            )
+            await websocket.send_json(
+                {"error": "First message must be authentication", "expected_action": "authenticate"}
+            )
+            await websocket.close(
+                code=status.WS_1008_POLICY_VIOLATION, reason="Authentication required"
+            )
             return
 
         # Issue #110 fix: Support both token-based and cookie-based authentication
@@ -185,8 +194,12 @@ async def websocket_endpoint(websocket: WebSocket):
 
         if not user:
             logger.warning("WebSocket: Authentication failed - invalid token")
-            await websocket.send_json({"error": "Authentication failed", "reason": "Invalid or expired token"})
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication failed")
+            await websocket.send_json(
+                {"error": "Authentication failed", "reason": "Invalid or expired token"}
+            )
+            await websocket.close(
+                code=status.WS_1008_POLICY_VIOLATION, reason="Authentication failed"
+            )
             return
 
         # Authentication successful
@@ -203,7 +216,9 @@ async def websocket_endpoint(websocket: WebSocket):
             # Validate message size (MEDIUM-003 fix)
             if len(data) > MAX_MESSAGE_SIZE:
                 logger.warning(f"WebSocket: Message too large ({len(data)} bytes)")
-                await websocket.send_json({"error": "Message too large", "max_size": MAX_MESSAGE_SIZE})
+                await websocket.send_json(
+                    {"error": "Message too large", "max_size": MAX_MESSAGE_SIZE}
+                )
                 continue
 
             try:
@@ -232,7 +247,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 await websocket.send_json({"error": "Invalid JSON"})
 
     except WebSocketDisconnect:
-        logger.info(f"WebSocket disconnected for user: {user.get('email') if user else 'unauthenticated'}")
+        logger.info(
+            f"WebSocket disconnected for user: {user.get('email') if user else 'unauthenticated'}"
+        )
         manager.disconnect(websocket)
     except Exception as e:
         logger.error(f"WebSocket error: {e}")

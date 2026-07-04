@@ -31,12 +31,8 @@ class MemoryService:
         self.conversations_table = self.lance.get_or_create_table(
             "conversations", ConversationSchema
         )
-        self.outputs_table = self.lance.get_or_create_table(
-            "agent_outputs", AgentOutputSchema
-        )
-        self.documents_table = self.lance.get_or_create_table(
-            "documents", DocumentSchema
-        )
+        self.outputs_table = self.lance.get_or_create_table("agent_outputs", AgentOutputSchema)
+        self.documents_table = self.lance.get_or_create_table("documents", DocumentSchema)
 
     async def store_conversation(
         self, agent_id: str, message: str, role: str = "user", metadata: Dict[str, Any] = None
@@ -159,7 +155,11 @@ class MemoryService:
         # Format results
         conversations = []
         for row in results:
-            metadata = {"agent_id": row["agent_id"], "role": row["role"], "timestamp": row["timestamp"]}
+            metadata = {
+                "agent_id": row["agent_id"],
+                "role": row["role"],
+                "timestamp": row["timestamp"],
+            }
             if row.get("metadata_json"):
                 metadata.update(json.loads(row["metadata_json"]))
             conversations.append(
@@ -294,7 +294,11 @@ class MemoryService:
         # Format results
         conversations = []
         for row in results:
-            metadata = {"agent_id": row["agent_id"], "role": row["role"], "timestamp": row["timestamp"]}
+            metadata = {
+                "agent_id": row["agent_id"],
+                "role": row["role"],
+                "timestamp": row["timestamp"],
+            }
             if row.get("metadata_json"):
                 metadata.update(json.loads(row["metadata_json"]))
             conversations.append(

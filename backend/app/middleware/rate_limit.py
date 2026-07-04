@@ -5,11 +5,10 @@ ABOUTME: Uses Redis for distributed rate limit storage and tracking.
 
 import logging
 
+from config.settings import settings
 from fastapi import Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-
-from config.settings import settings
 
 logger = logging.getLogger(__name__)
 
