@@ -171,11 +171,13 @@ no migration is required either direction.
   `isort --profile black --line-length 100 backend/app`) so the lint job passes.
   Recommended follow-up: **pin** `black`/`isort` versions in the workflow so an
   unpinned upgrade can't re-break the check.
-- **Pre-existing CI failure still open (out of scope):** *Build Docker Images* —
-  `backend/Dockerfile` does `COPY backend/entrypoint.sh` but that file is absent,
-  and the CI `context: ./backend` doesn't match the Dockerfile's `COPY backend/...`
-  paths. This build was already failing on main; `Run Tests` (the
-  migration-relevant check) is green.
+- **Build Docker Images — FIXED in this PR.** The failure was a pre-existing CI
+  misconfiguration, not a missing file: `backend/entrypoint.sh` (and every other
+  `COPY` source) exists, but `backend/Dockerfile` COPYs paths relative to the
+  **repo root** (`COPY backend/app ./app`, matching how Railway builds it) while
+  the `ci.yml` `build` job passed `context: ./backend`, so `COPY backend/entrypoint.sh`
+  resolved to `backend/backend/entrypoint.sh` → not found. Fixed by setting the
+  backend build step's `context: .` (the frontend step already used `context: .`).
 - **`backend/uv.lock`** still references the removed packages. Regenerate with
   `uv lock` (or delete if pip-only) so the lockfile matches `pyproject.toml`.
   The Docker build uses `pip install -e .` from `pyproject.toml`, so this is a
