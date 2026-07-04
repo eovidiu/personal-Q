@@ -4,7 +4,7 @@ Integration tests for PERSONAL_Q_API_KEY configuration feature.
 Tests the environment-based API key configuration:
 - get_anthropic_api_key() function in llm_service.py
 - /api-key-status endpoint in settings.py
-- CrewService behavior with/without API key
+- AgentRuntime behavior with/without API key
 """
 
 import pytest
@@ -108,139 +108,132 @@ class TestApiKeyStatusEndpoint:
         assert data["configured"] is False
 
 
-class TestCrewServiceApiKeyHandling:
-    """Integration tests for CrewService API key handling."""
+class TestAgentRuntimeApiKeyHandling:
+    """Integration tests for AgentRuntime API key handling."""
 
-    @pytest.mark.asyncio
-    async def test_crew_service_fails_gracefully_without_api_key(self):
-        """Test CrewService returns error dict when API key not configured."""
-        from app.services.crew_service import CrewService, CREWAI_AVAILABLE
+    @staticmethod
+    def _make_agent(**overrides):
         from app.models.agent import Agent, AgentType, AgentStatus
 
-        if not CREWAI_AVAILABLE:
-            pytest.skip("CrewAI not available")
+        defaults = dict(
+            id="test-agent-no-key",
+            name="Test Agent",
+            description="Test agent for API key failure",
+            agent_type=AgentType.CONVERSATIONAL,
+            model="anthropic/claude-opus-4-8",
+            system_prompt="You are a test agent.",
+            temperature=0.7,
+            max_tokens=2048,
+            status=AgentStatus.ACTIVE,
+        )
+        defaults.update(overrides)
+        return Agent(**defaults)
 
-        # Mock get_anthropic_api_key to raise ValueError
-        with patch("app.services.crew_service.get_anthropic_api_key") as mock_get_key:
-            mock_get_key.side_effect = ValueError(
-                "PERSONAL_Q_API_KEY environment variable is not set. "
-                "This is required for agent execution."
-            )
+    @pytest.mark.asyncio
+    async def test_agent_runtime_fails_gracefully_without_api_key(self):
+        """AgentRuntime returns an error dict when no Anthropic API key is configured."""
+        from app.services.agent_runtime import AgentRuntime
+        from app.schemas.llm import ValidationResult
 
-            agent = Agent(
-                id="test-agent-no-key",
-                name="Test Agent",
-                description="Test agent for API key failure",
-                agent_type=AgentType.CONVERSATIONAL,
-                model="claude-3-5-sonnet-20241022",
-                system_prompt="You are a test agent.",
-                temperature=0.7,
-                max_tokens=2048,
-                status=AgentStatus.ACTIVE,
-            )
+        agent = self._make_agent()
 
-            mock_db = Mock()
-            result = await CrewService.execute_agent_task(
-                db=mock_db,
+        # Model validates as a configured Anthropic model, but the key lookup
+        # returns None — exercising the runtime's explicit "key missing" branch.
+        with patch(
+            "app.services.agent_runtime.model_validator.validate_model",
+            return_value=ValidationResult(
+                is_valid=True,
+                provider="anthropic",
+                model="claude-opus-4-8",
+                normalized="anthropic/claude-opus-4-8",
+            ),
+        ), patch(
+            "app.services.agent_runtime.provider_registry.get_api_key",
+            return_value=None,
+        ):
+            result = await AgentRuntime.execute_agent_task(
+                db=Mock(),
                 agent=agent,
                 task_description="Test task that should fail",
             )
 
-            # Verify graceful failure
-            assert result["success"] is False
-            assert "PERSONAL_Q_API_KEY" in result["error"]
-            assert "not set" in result["error"]
-            assert result["agent_id"] == "test-agent-no-key"
+        assert result["success"] is False
+        assert "anthropic" in result["error"].lower()
+        assert "api key" in result["error"].lower()
+        assert result["agent_id"] == "test-agent-no-key"
 
     @pytest.mark.asyncio
-    async def test_crew_service_multi_agent_fails_gracefully_without_api_key(self):
-        """Test CrewService multi-agent returns error when API key not configured."""
-        from app.services.crew_service import CrewService, CREWAI_AVAILABLE
-        from app.models.agent import Agent, AgentType, AgentStatus
+    async def test_agent_runtime_rejects_non_anthropic_provider(self):
+        """AgentRuntime returns a clear error for non-Anthropic providers."""
+        from app.services.agent_runtime import AgentRuntime
+        from app.schemas.llm import ValidationResult
 
-        if not CREWAI_AVAILABLE:
-            pytest.skip("CrewAI not available")
+        agent = self._make_agent(model="openai/gpt-4o")
 
-        with patch("app.services.crew_service.get_anthropic_api_key") as mock_get_key:
-            mock_get_key.side_effect = ValueError(
-                "PERSONAL_Q_API_KEY environment variable is not set."
-            )
-
-            agents = [
-                Agent(
-                    id="agent-1",
-                    name="Agent 1",
-                    description="First test agent",
-                    agent_type=AgentType.ANALYTICAL,
-                    model="claude-3-5-sonnet-20241022",
-                    system_prompt="Test agent 1",
-                    temperature=0.7,
-                    max_tokens=2048,
-                    status=AgentStatus.ACTIVE,
-                ),
-                Agent(
-                    id="agent-2",
-                    name="Agent 2",
-                    description="Second test agent",
-                    agent_type=AgentType.CREATIVE,
-                    model="claude-3-5-sonnet-20241022",
-                    system_prompt="Test agent 2",
-                    temperature=0.8,
-                    max_tokens=2048,
-                    status=AgentStatus.ACTIVE,
-                ),
-            ]
-
-            mock_db = Mock()
-            result = await CrewService.execute_multi_agent_task(
-                db=mock_db,
-                agents=agents,
-                task_descriptions=["Task 1", "Task 2"],
-            )
-
-            # Verify graceful failure
-            assert result["success"] is False
-            assert "PERSONAL_Q_API_KEY" in result["error"]
-            assert len(result["agents"]) == 2
-
-    @pytest.mark.asyncio
-    async def test_crew_service_error_message_content(self):
-        """Test that CrewService error message provides actionable information."""
-        from app.services.crew_service import CrewService, CREWAI_AVAILABLE
-        from app.models.agent import Agent, AgentType, AgentStatus
-
-        if not CREWAI_AVAILABLE:
-            pytest.skip("CrewAI not available")
-
-        with patch("app.services.crew_service.get_anthropic_api_key") as mock_get_key:
-            error_message = (
-                "PERSONAL_Q_API_KEY environment variable is not set. "
-                "This is required for agent execution."
-            )
-            mock_get_key.side_effect = ValueError(error_message)
-
-            agent = Agent(
-                id="test-agent",
-                name="Test Agent",
-                description="Test",
-                agent_type=AgentType.CONVERSATIONAL,
-                model="claude-3-5-sonnet-20241022",
-                system_prompt="Test",
-                temperature=0.7,
-                max_tokens=2048,
-                status=AgentStatus.ACTIVE,
-            )
-
-            mock_db = Mock()
-            result = await CrewService.execute_agent_task(
-                db=mock_db,
+        with patch(
+            "app.services.agent_runtime.model_validator.validate_model",
+            return_value=ValidationResult(
+                is_valid=True,
+                provider="openai",
+                model="gpt-4o",
+                normalized="openai/gpt-4o",
+            ),
+        ):
+            result = await AgentRuntime.execute_agent_task(
+                db=Mock(),
                 agent=agent,
                 task_description="Test task",
             )
 
-            # Error message should be actionable
-            assert "PERSONAL_Q_API_KEY" in result["error"]
-            assert "required" in result["error"]
+        assert result["success"] is False
+        assert "not supported" in result["error"].lower()
+
+    @pytest.mark.asyncio
+    async def test_agent_runtime_multi_agent_fails_gracefully_without_api_key(self):
+        """Multi-agent execution returns an error when the API key is missing."""
+        from app.services.agent_runtime import AgentRuntime
+        from app.schemas.llm import ValidationResult
+
+        agents = [
+            self._make_agent(id="agent-1", name="Agent 1"),
+            self._make_agent(id="agent-2", name="Agent 2"),
+        ]
+
+        with patch(
+            "app.services.agent_runtime.model_validator.validate_model",
+            return_value=ValidationResult(
+                is_valid=True,
+                provider="anthropic",
+                model="claude-opus-4-8",
+                normalized="anthropic/claude-opus-4-8",
+            ),
+        ), patch(
+            "app.services.agent_runtime.provider_registry.get_api_key",
+            return_value=None,
+        ):
+            result = await AgentRuntime.execute_multi_agent_task(
+                db=Mock(),
+                agents=agents,
+                task_descriptions=["Task 1", "Task 2"],
+            )
+
+        assert result["success"] is False
+        assert "api key" in result["error"].lower()
+        assert result["failed_agent_id"] == "agent-1"
+
+    @pytest.mark.asyncio
+    async def test_agent_runtime_multi_agent_task_count_mismatch(self):
+        """Mismatched agent/task counts raise ValueError."""
+        from app.services.agent_runtime import AgentRuntime
+
+        agents = [self._make_agent(id="agent-1", name="Agent 1")]
+
+        with pytest.raises(ValueError, match="Number of agents must match number of tasks"):
+            await AgentRuntime.execute_multi_agent_task(
+                db=Mock(),
+                agents=agents,
+                task_descriptions=["Task 1", "Task 2"],
+            )
 
 
 class TestApiKeyConfigIntegration:

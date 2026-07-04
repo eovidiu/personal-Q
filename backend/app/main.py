@@ -111,7 +111,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    description="AI Agent Management System with CrewAI orchestration",
+    description="AI Agent Management System with Claude agent runtime (Anthropic SDK tool-use)",
     lifespan=lifespan,
     docs_url=f"{settings.api_prefix}/docs",
     redoc_url=f"{settings.api_prefix}/redoc",

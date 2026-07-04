@@ -25,6 +25,23 @@ logger = logging.getLogger(__name__)
 # Opens after 5 failures, stays open for 60s
 llm_breaker = CircuitBreaker(fail_max=5, reset_timeout=60, name="llm_service")
 
+# Claude 4.6+ / Fable models reject sampling params (temperature/top_p/top_k).
+# Sending them returns a 400, so omit temperature for these model families.
+_NO_SAMPLING_PARAM_PREFIXES = (
+    "claude-opus-4-6",
+    "claude-opus-4-7",
+    "claude-opus-4-8",
+    "claude-sonnet-4-6",
+    "claude-haiku-4-5",
+    "claude-fable-5",
+    "claude-mythos-5",
+)
+
+
+def _accepts_sampling_params(model: str) -> bool:
+    """Return True if the model accepts temperature/top_p (older Claude models)."""
+    return not any(model.startswith(prefix) for prefix in _NO_SAMPLING_PARAM_PREFIXES)
+
 
 def get_anthropic_api_key() -> str:
     """
@@ -163,14 +180,17 @@ class LLMService:
                 f"Generating with model {model}, temp={temperature}, max_tokens={max_tokens}"
             )
 
-            response = await self.async_client.messages.create(
-                model=model,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                system=sanitized_system if sanitized_system else "",
-                messages=[{"role": "user", "content": sanitized_prompt}],
+            create_kwargs = {
+                "model": model,
+                "max_tokens": max_tokens,
+                "system": sanitized_system if sanitized_system else "",
+                "messages": [{"role": "user", "content": sanitized_prompt}],
                 **kwargs,
-            )
+            }
+            if _accepts_sampling_params(model):
+                create_kwargs["temperature"] = temperature
+
+            response = await self.async_client.messages.create(**create_kwargs)
 
             logger.info(
                 f"LLM generation successful: {response.usage.input_tokens} in, {response.usage.output_tokens} out"
@@ -260,14 +280,17 @@ class LLMService:
         try:
             logger.debug(f"Streaming with model {model}")
 
-            async with self.async_client.messages.stream(
-                model=model,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                system=sanitized_system if sanitized_system else "",
-                messages=[{"role": "user", "content": sanitized_prompt}],
+            stream_kwargs = {
+                "model": model,
+                "max_tokens": max_tokens,
+                "system": sanitized_system if sanitized_system else "",
+                "messages": [{"role": "user", "content": sanitized_prompt}],
                 **kwargs,
-            ) as stream:
+            }
+            if _accepts_sampling_params(model):
+                stream_kwargs["temperature"] = temperature
+
+            async with self.async_client.messages.stream(**stream_kwargs) as stream:
                 async for text in stream.text_stream:
                     yield text
 
@@ -293,9 +316,9 @@ class LLMService:
                 api_key=api_key,
                 http_client=httpx.AsyncClient(timeout=httpx.Timeout(connect=5.0, read=10.0)),
             )
-            # Make a minimal test request
+            # Make a minimal test request with a current, low-cost model
             response = await test_client.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-haiku-4-5",
                 max_tokens=10,
                 messages=[{"role": "user", "content": "test"}],
             )
@@ -332,11 +355,14 @@ class LLMService:
         """
         model = model or settings.default_model
 
-        # Pricing as of 2024 (per million tokens)
+        # Pricing per million tokens (current Claude models + legacy fallbacks)
         pricing = {
+            "claude-fable-5": {"input": 10.00, "output": 50.00},
+            "claude-opus-4-8": {"input": 5.00, "output": 25.00},
+            "claude-sonnet-4-6": {"input": 3.00, "output": 15.00},
+            "claude-haiku-4-5": {"input": 1.00, "output": 5.00},
+            # Legacy
             "claude-3-5-sonnet-20241022": {"input": 3.00, "output": 15.00},
-            "claude-3-opus-20240229": {"input": 15.00, "output": 75.00},
-            "claude-3-sonnet-20240229": {"input": 3.00, "output": 15.00},
             "claude-3-haiku-20240307": {"input": 0.25, "output": 1.25},
         }
 

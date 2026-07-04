@@ -7,13 +7,13 @@ import sys
 import uuid
 from datetime import datetime
 
+from app.db.database import AsyncSessionLocal, Base, engine
 from app.db.lance_client import (
     AgentOutputSchema,
     ConversationSchema,
     DocumentSchema,
     lance_client,
 )
-from app.db.database import AsyncSessionLocal, Base, engine
 from app.models import Agent, AgentStatus, AgentType, APIKey
 from app.utils.datetime_utils import utcnow
 from sqlalchemy.ext.asyncio import AsyncSession

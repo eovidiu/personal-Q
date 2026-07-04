@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     memory_retention_days: int = 90
 
     # LLM Defaults
-    default_model: str = "claude-3-5-sonnet-20241022"
+    default_model: str = "claude-opus-4-8"
     default_temperature: float = 0.7
     default_max_tokens: int = 4096
 

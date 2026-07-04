@@ -8,10 +8,9 @@ import os
 from typing import Optional
 
 import lancedb
+from config.settings import settings
 from lancedb.embeddings import get_registry
 from lancedb.pydantic import LanceModel, Vector
-
-from config.settings import settings
 
 logger = logging.getLogger(__name__)
 

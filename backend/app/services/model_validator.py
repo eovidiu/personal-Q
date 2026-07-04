@@ -44,19 +44,32 @@ class ModelValidator:
         "GPT-4o": "openai/gpt-4o",
         "GPT-3.5": "openai/gpt-3.5-turbo",
         "GPT-3.5-Turbo": "openai/gpt-3.5-turbo",
+        # Anthropic current names
+        "claude-opus-4.8": "anthropic/claude-opus-4-8",
+        "claude-opus-4-8": "anthropic/claude-opus-4-8",
+        "claude-sonnet-4.6": "anthropic/claude-sonnet-4-6",
+        "claude-sonnet-4-6": "anthropic/claude-sonnet-4-6",
+        "claude-haiku-4.5": "anthropic/claude-haiku-4-5",
+        "claude-haiku-4-5": "anthropic/claude-haiku-4-5",
         # Anthropic legacy names
-        "claude-3-opus": "anthropic/claude-3-opus-20240229",
-        "claude-3-sonnet": "anthropic/claude-3-sonnet-20240229",
+        "claude-3-opus": "anthropic/claude-opus-4-8",  # retired -> current Opus
+        "claude-3-sonnet": "anthropic/claude-sonnet-4-6",  # retired -> current Sonnet
         "claude-3-haiku": "anthropic/claude-3-haiku-20240307",
-        "claude-3.5-sonnet": "anthropic/claude-3-5-sonnet-20241022",
-        "claude-3.5-haiku": "anthropic/claude-3-5-haiku-20241022",
-        "claude-3.7-sonnet": "anthropic/claude-3-7-sonnet-20250219",
+        "claude-3.5-sonnet": "anthropic/claude-sonnet-4-6",  # retired -> current Sonnet
+        "claude-3.5-haiku": "anthropic/claude-haiku-4-5",  # retired -> current Haiku
+        "claude-3.7-sonnet": "anthropic/claude-sonnet-4-6",  # retired -> current Sonnet
         "claude-sonnet-4": "anthropic/claude-sonnet-4-20250514",
         "claude-opus-4": "anthropic/claude-opus-4-20250514",
+        # Retired snapshot IDs remapped to current models (seeded agents keep working)
+        "claude-3-5-sonnet-20241022": "anthropic/claude-sonnet-4-6",
+        "claude-3-5-sonnet-20240620": "anthropic/claude-sonnet-4-6",
+        "claude-3-7-sonnet-20250219": "anthropic/claude-sonnet-4-6",
+        "claude-3-5-haiku-20241022": "anthropic/claude-haiku-4-5",
+        "claude-3-opus-20240229": "anthropic/claude-opus-4-8",
         # Common informal names
-        "Claude-3": "anthropic/claude-3-5-sonnet-20241022",
-        "Claude-3.5": "anthropic/claude-3-5-sonnet-20241022",
-        "Claude": "anthropic/claude-3-5-sonnet-20241022",
+        "Claude-3": "anthropic/claude-sonnet-4-6",
+        "Claude-3.5": "anthropic/claude-sonnet-4-6",
+        "Claude": "anthropic/claude-opus-4-8",
         # Mistral legacy names
         "mistral-large": "mistral/mistral-large-latest",
         "mistral-medium": "mistral/mistral-medium-latest",
@@ -175,9 +188,7 @@ class ModelValidator:
         # Step 4: Validate provider exists
         provider_config = self.registry.get_provider(provider)
         if not provider_config:
-            available_providers = ", ".join(
-                p.name for p in self.registry.list_providers()
-            )
+            available_providers = ", ".join(p.name for p in self.registry.list_providers())
             return ValidationResult(
                 is_valid=False,
                 provider=provider,

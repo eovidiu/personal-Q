@@ -111,7 +111,10 @@ jobs:
       - name: Build backend image
         uses: docker/build-push-action@v5
         with:
-          context: ./backend
+          # backend/Dockerfile COPYs paths relative to the repo root
+          # (e.g. `COPY backend/app ./app`), matching how Railway builds it,
+          # so the build context must be the repo root, not ./backend.
+          context: .
           file: ./backend/Dockerfile
           push: false
           tags: personal-q-backend:test

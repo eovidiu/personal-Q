@@ -6,13 +6,12 @@ ABOUTME: Provides provider enumeration for frontend model selection dropdown.
 import logging
 from typing import Dict
 
-from fastapi import APIRouter, Depends
-
 from app.dependencies.auth import get_current_user
 from app.schemas.llm import ProvidersResponse, ValidationResult
 from app.services.model_validator import model_validator
 from app.services.provider_registry import provider_registry
 from config.settings import settings
+from fastapi import APIRouter, Depends
 
 logger = logging.getLogger(__name__)
 
