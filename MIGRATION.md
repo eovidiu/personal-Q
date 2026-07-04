@@ -162,6 +162,18 @@ no migration is required either direction.
 
 ## 8. Known follow-ups / out of scope
 
+- **Pre-existing CI failures (not caused by this migration; tracked for a
+  separate cleanup PR):**
+  - *Code Quality (black)* — the `ci.yml` lint job installs an **unpinned**
+    `black` (now 26.5.1) and checks all of `backend/app`. Six files this PR never
+    touches (`routers/auth.py`, `routers/metrics.py`, `routers/tasks.py`,
+    `routers/websocket.py`, `workers/celery_app.py`, `services/memory_service.py`)
+    need reformatting. Fix: run `black --line-length=100 backend/app` repo-wide
+    and pin `black`/`isort` versions in the workflow.
+  - *Build Docker Images* — `backend/Dockerfile` does `COPY backend/entrypoint.sh`
+    but that file is absent, and the CI `context: ./backend` doesn't match the
+    Dockerfile's `COPY backend/...` paths. This build was already failing on main.
+  - `Run Tests` (the migration-relevant check) is green.
 - **`backend/uv.lock`** still references the removed packages. Regenerate with
   `uv lock` (or delete if pip-only) so the lockfile matches `pyproject.toml`.
   The Docker build uses `pip install -e .` from `pyproject.toml`, so this is a
