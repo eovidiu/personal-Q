@@ -51,7 +51,7 @@ jobs:
             This is a **full-stack monorepo** with the following structure:
             - **Frontend**: React 19 SPA with TypeScript, Vite, Tailwind CSS, shadcn/ui components
             - **Backend**: FastAPI (Python 3.11+) with async support, SQLAlchemy ORM
-            - **AI/Agents**: Claude agent runtime (Anthropic SDK Messages API + tool-use loop) for single- and multi-agent orchestration
+            - **AI/Agents**: CrewAI + Claude API integration for multi-agent orchestration
             - **Data Layer**: SQLite + ChromaDB (vector database)
             - **Task Queue**: Celery + Redis for background jobs
             - **Infrastructure**: Docker Compose, GitHub Actions CI/CD
@@ -90,9 +90,9 @@ jobs:
 
             ### 5. **AI/LLM Integration**
             - Claude API usage efficiency (token optimization, prompt engineering)
-            - Claude agent runtime patterns (Anthropic SDK tool-use loop, agentic iteration limits)
-            - Model-aware request params (sampling params omitted for Claude 4.6+/Fable models)
+            - CrewAI agent orchestration patterns
             - ChromaDB vector operations and embedding management
+            - LangChain integration patterns
             - Error handling for AI service failures
 
             ### 6. **Testing & Quality Assurance**
@@ -156,7 +156,7 @@ jobs:
             ## Special Considerations
             - **React 19**: Be aware of new concurrent features and Server Components compatibility
             - **FastAPI Best Practices**: Dependency injection, background tasks, WebSocket patterns
-            - **Claude Agent Runtime**: Tool-use loop correctness, iteration limits, sequential multi-agent chaining
+            - **CrewAI Patterns**: Agent coordination, task delegation, crew configuration
             - **ChromaDB**: Vector similarity search optimization, collection management
             - **Tailwind + shadcn/ui**: Component variant patterns, accessibility
 
